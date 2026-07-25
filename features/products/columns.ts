@@ -16,13 +16,6 @@ export const productColumns: TableColumn[] = [
     width: 120,
   },
   {
-    id: 'supplier_name',
-    header: 'Supplier',
-    accessor: 'supplier_name',
-    sortable: true,
-    width: 150,
-  },
-  {
     id: 'cost_price',
     header: 'Cost Price',
     accessor: 'cost_price',

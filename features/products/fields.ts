@@ -1,8 +1,7 @@
 import { z } from 'zod'
 import { FormField } from '@/types'
-import { Supplier } from '@/types'
 
-export const getProductFormFields = (suppliers: Supplier[]): FormField[] => [
+export const getProductFormFields = (categories: string[]): FormField[] => [
   {
     name: 'name',
     label: 'Product Name',
@@ -14,22 +13,14 @@ export const getProductFormFields = (suppliers: Supplier[]): FormField[] => [
   {
     name: 'category',
     label: 'Category',
-    type: 'text',
-    required: true,
-    placeholder: 'e.g., Electronics, Furniture',
-    validation: z.string().min(1, 'Category is required'),
-  },
-  {
-    name: 'supplier_id',
-    label: 'Supplier',
     type: 'select',
     required: true,
-    placeholder: 'Select a supplier',
-    options: suppliers.map((s) => ({
-      value: s.id,
-      label: s.name,
+    placeholder: 'Select or add a category',
+    options: categories.map((c) => ({
+      value: c,
+      label: c,
     })),
-    validation: z.string().min(1, 'Supplier is required'),
+    validation: z.string().min(1, 'Category is required'),
   },
   {
     name: 'cost_price',

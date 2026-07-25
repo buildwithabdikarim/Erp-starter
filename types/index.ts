@@ -94,7 +94,6 @@ export interface BaseEntity {
 export interface Product extends BaseEntity {
   name: string
   category: string
-  supplier_id: string
   cost_price: number
   selling_price: number
   quantity: number
@@ -108,8 +107,8 @@ export interface Supplier extends BaseEntity {
 }
 
 export interface Sale extends BaseEntity {
-  customer_name: string
   product_id: string
+  supplier_id: string
   quantity: number
   unit_price: number
   total_amount: number

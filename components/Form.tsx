@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { FormConfig } from '@/types'
-import { TextInput, SelectInput, TextAreaInput, CheckboxInput } from './inputs'
+import { TextInput, SelectInput, TextAreaInput, CheckboxInput, CategorySelect } from './inputs'
 import { Button } from './Button'
 
 interface FormProps {
@@ -90,6 +90,24 @@ export const Form: React.FC<FormProps> = ({
       {config.fields.map((field) => {
         const error = errors[field.name]
         const value = formData[field.name] ?? field.defaultValue ?? ''
+
+        // Special handling for category fields
+        if (field.name === 'category' && field.type === 'select') {
+          return (
+            <CategorySelect
+              key={field.name}
+              name={field.name}
+              label={field.label}
+              value={value}
+              onChange={handleChange}
+              placeholder={field.placeholder}
+              required={field.required}
+              error={error}
+              disabled={isLoading || isSubmitting}
+              options={field.options || []}
+            />
+          )
+        }
 
         switch (field.type) {
           case 'textarea':

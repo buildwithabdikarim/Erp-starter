@@ -8,19 +8,29 @@ import { Modal } from '@/components/Modal'
 import { Form } from '@/components/Form'
 import { Button } from '@/components/Button'
 import { useModal, useNotification } from '@/hooks'
-import { saleAPI, productAPI } from '@/services/api'
+import { saleAPI, productAPI, supplierAPI } from '@/services/api'
 import { getSalesFormFields } from '@/features/sales/fields'
 import { salesColumns } from '@/features/sales/columns'
-import { Sale, Product, FormConfig, TableConfig } from '@/types'
-import { Plus, Edit2, Trash2 } from 'lucide-react'
+import { Sale, Product, Supplier, FormConfig, TableConfig } from '@/types'
+import { Plus, Edit2, Trash2, Printer } from 'lucide-react'
+import { BulkPrintDialog } from '@/components/BulkPrintDialog'
+import { PrintTransaction } from '@/components/PrintTransaction'
+import { PrintTransactionGroup } from '@/components/PrintTransactionGroup'
 
 export default function SalesPage() {
-  const [sales, setSales] = useState<(Sale & { product_name: string })[]>([])
+  const [sales, setSales] = useState<(Sale & { product_name: string; supplier_name: string })[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const modal = useModal()
   const { notifications, add } = useNotification()
   const [selectedSale, setSelectedSale] = useState<Sale | undefined>()
+  const [bulkPrintOpen, setBulkPrintOpen] = useState(false)
+  const [printMode, setPrintMode] = useState<'single' | 'group' | null>(null)
+  const [printData, setPrintData] = useState<{
+    sales: (Sale & { product_name: string; supplier_name: string })[]
+    groupBy: 'date' | 'supplier' | 'manual'
+  } | null>(null)
 
   useEffect(() => {
     loadData()
@@ -29,18 +39,21 @@ export default function SalesPage() {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      const [salesRes, productsRes] = await Promise.all([
+      const [salesRes, productsRes, suppliersRes] = await Promise.all([
         saleAPI.getAll(1, 50),
         productAPI.getAll(1, 100),
+        supplierAPI.getAll(1, 100),
       ])
       
       const enrichedSales = (salesRes.data as Sale[]).map((sale) => ({
         ...sale,
         product_name: productsRes.data.find((p) => p.id === sale.product_id)?.name || 'Unknown',
+        supplier_name: suppliersRes.data.find((s) => s.id === sale.supplier_id)?.name || 'Unknown',
       }))
       
       setSales(enrichedSales)
       setProducts(productsRes.data)
+      setSuppliers(suppliersRes.data)
     } catch (error) {
       add({ type: 'error', title: 'Error', message: 'Failed to load data' })
     } finally {
@@ -52,8 +65,8 @@ export default function SalesPage() {
     try {
       if (modal.mode === 'create') {
         const saleData = {
-          customer_name: data.customer_name,
           product_id: data.product_id,
+          supplier_id: data.supplier_id,
           quantity: data.quantity,
           unit_price: data.unit_price,
           total_amount: data.quantity * data.unit_price,
@@ -91,15 +104,28 @@ export default function SalesPage() {
     }
   }
 
+  const handlePrintSingle = (sale: Sale & { product_name: string; supplier_name: string }) => {
+    setPrintMode('single')
+    setPrintData({ sales: [sale], groupBy: 'manual' })
+  }
+
+  const handleBulkPrint = (selectedSales: (Sale & { product_name: string; supplier_name: string })[], groupBy: 'date' | 'supplier' | 'manual') => {
+    setPrintMode('group')
+    setPrintData({ sales: selectedSales, groupBy })
+  }
+
   const tableConfig: TableConfig = {
     columns: [
       ...salesColumns,
       {
         id: 'actions',
         header: 'Actions',
-        width: 120,
+        width: 150,
         cell: (_, row) => (
           <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={() => handlePrintSingle(row)}>
+              <Printer className="w-4 h-4" />
+            </Button>
             <Button size="sm" variant="secondary" onClick={() => {
               setSelectedSale(row)
               modal.open('edit', row)
@@ -121,7 +147,7 @@ export default function SalesPage() {
 
   const formConfig: FormConfig = {
     title: `${modal.mode === 'create' ? 'Create' : 'Edit'} Sale`,
-    fields: getSalesFormFields(products),
+    fields: getSalesFormFields(products || [], suppliers || []),
     submitLabel: 'Save Sale',
   }
 
@@ -140,13 +166,19 @@ export default function SalesPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Sales</h1>
-          <Button onClick={() => {
-            setSelectedSale(undefined)
-            modal.open('create')
-          }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Record Sale
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setBulkPrintOpen(true)}>
+              <Printer className="w-4 h-4 mr-2" />
+              Bulk Print
+            </Button>
+            <Button onClick={() => {
+              setSelectedSale(undefined)
+              modal.open('create')
+            }}>
+              <Plus className="w-4 h-4 mr-2" />
+              Record Sale
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -174,19 +206,6 @@ export default function SalesPage() {
         onClose={modal.close}
         title={formConfig.title || ''}
         width="lg"
-        footer={
-          <>
-            <Button variant="outline" onClick={modal.close}>
-              Cancel
-            </Button>
-            <Button onClick={() => {
-              const form = document.querySelector('form')
-              form?.dispatchEvent(new Event('submit', { bubbles: true }))
-            }}>
-              {formConfig.submitLabel || 'Save'}
-            </Button>
-          </>
-        }
       >
         <Form
           config={formConfig}
@@ -195,6 +214,50 @@ export default function SalesPage() {
           onCancel={modal.close}
         />
       </Modal>
+
+      {/* Bulk Print Dialog */}
+      <BulkPrintDialog
+        isOpen={bulkPrintOpen}
+        onClose={() => setBulkPrintOpen(false)}
+        sales={sales}
+        suppliers={suppliers}
+        onPrint={handleBulkPrint}
+      />
+
+      {/* Print Views */}
+      {printMode === 'single' && printData && (
+        <div className="fixed inset-0 bg-white z-50 overflow-auto no-print">
+          <div className="p-4 bg-background border-b border-border sticky top-0 z-10 flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Print Preview - Transaction</h2>
+            <div className="flex gap-2">
+              <Button onClick={() => window.print()}>Print</Button>
+              <Button variant="outline" onClick={() => setPrintMode(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+          <PrintTransaction sale={printData.sales[0]} />
+        </div>
+      )}
+
+      {printMode === 'group' && printData && (
+        <div className="fixed inset-0 bg-white z-50 overflow-auto no-print">
+          <div className="p-4 bg-background border-b border-border sticky top-0 z-10 flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Print Preview - Bulk Report</h2>
+            <div className="flex gap-2">
+              <Button onClick={() => window.print()}>Print</Button>
+              <Button variant="outline" onClick={() => setPrintMode(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+          <PrintTransactionGroup
+            transactions={printData.sales}
+            groupBy={printData.groupBy}
+            title={`Transactions Report - ${printData.groupBy === 'date' ? 'By Date' : printData.groupBy === 'supplier' ? 'By Supplier' : 'Manual Selection'}`}
+          />
+        </div>
+      )}
     </Layout>
   )
 }

@@ -8,15 +8,15 @@ import { Modal } from '@/components/Modal'
 import { Form } from '@/components/Form'
 import { Button } from '@/components/Button'
 import { useModal, useNotification } from '@/hooks'
-import { productAPI, supplierAPI } from '@/services/api'
+import { productAPI } from '@/services/api'
 import { getProductFormFields } from '@/features/products/fields'
 import { productColumns } from '@/features/products/columns'
-import { Product, Supplier, FormConfig, TableConfig } from '@/types'
+import { Product, FormConfig, TableConfig } from '@/types'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<(Product & { supplier_name: string })[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const modal = useModal()
   const { notifications, add } = useNotification()
@@ -29,12 +29,12 @@ export default function ProductsPage() {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      const [productsRes, suppliersRes] = await Promise.all([
-        productAPI.getAll(1, 50),
-        supplierAPI.getAll(1, 100),
-      ])
+      const productsRes = await productAPI.getAll(1, 50)
       setProducts(productsRes.data)
-      setSuppliers(suppliersRes.data)
+      
+      // Extract unique categories from products
+      const uniqueCategories = Array.from(new Set(productsRes.data.map((p) => p.category)))
+      setCategories(uniqueCategories)
     } catch (error) {
       add({ type: 'error', title: 'Error', message: 'Failed to load data' })
     } finally {
@@ -48,11 +48,16 @@ export default function ProductsPage() {
         const productData = {
           name: data.name,
           category: data.category,
-          supplier_id: data.supplier_id,
           cost_price: data.cost_price,
           selling_price: data.selling_price,
           quantity: data.quantity,
         }
+        
+        // Add new category if it doesn't exist
+        if (!categories.includes(data.category)) {
+          setCategories([...categories, data.category])
+        }
+        
         const result = await productAPI.create(productData)
         if (result.success) {
           await loadData()
@@ -115,7 +120,7 @@ export default function ProductsPage() {
 
   const formConfig: FormConfig = {
     title: `${modal.mode === 'create' ? 'Create' : 'Edit'} Product`,
-    fields: getProductFormFields(suppliers),
+    fields: getProductFormFields(categories),
     submitLabel: 'Save Product',
   }
 
@@ -168,19 +173,6 @@ export default function ProductsPage() {
         onClose={modal.close}
         title={formConfig.title || ''}
         width="lg"
-        footer={
-          <>
-            <Button variant="outline" onClick={modal.close}>
-              Cancel
-            </Button>
-            <Button onClick={() => {
-              const form = document.querySelector('form')
-              form?.dispatchEvent(new Event('submit', { bubbles: true }))
-            }}>
-              {formConfig.submitLabel || 'Save'}
-            </Button>
-          </>
-        }
       >
         <Form
           config={formConfig}

@@ -2,19 +2,19 @@ import { TableColumn } from '@/types'
 
 export const salesColumns: TableColumn[] = [
   {
-    id: 'customer_name',
-    header: 'Customer',
-    accessor: 'customer_name',
-    sortable: true,
-    width: 150,
-    filterable: true,
-  },
-  {
     id: 'product_name',
     header: 'Product',
     accessor: 'product_name',
     sortable: true,
     width: 180,
+    filterable: true,
+  },
+  {
+    id: 'supplier_name',
+    header: 'Supplier',
+    accessor: 'supplier_name',
+    sortable: true,
+    width: 150,
     filterable: true,
   },
   {
