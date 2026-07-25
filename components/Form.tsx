@@ -26,12 +26,20 @@ export const Form: React.FC<FormProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
+    const field = config.fields.find((f) => f.name === name)
 
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked
       setFormData((prev) => ({
         ...prev,
         [name]: checked,
+      }))
+    } else if (type === 'number' || field?.type === 'number') {
+      // Convert string value to number for number-type fields
+      const numValue = value === '' ? '' : Number(value)
+      setFormData((prev) => ({
+        ...prev,
+        [name]: numValue,
       }))
     } else {
       setFormData((prev) => ({
