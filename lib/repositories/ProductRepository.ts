@@ -23,7 +23,7 @@ export class ProductRepository extends BaseRepository<any> {
     return db
       .select()
       .from(product)
-      .where((t) => like(t.name, `%${name}%`) && eq(t.userId, userId))
+      .where((t) => like(t.name, `%${name}%`))
       .limit(limit)
   }
 
@@ -31,7 +31,7 @@ export class ProductRepository extends BaseRepository<any> {
     return db
       .select()
       .from(product)
-      .where((t) => eq(t.category, category) && eq(t.userId, userId))
+      .where((t) => eq(t.category, category))
       .limit(limit)
   }
 
@@ -39,7 +39,6 @@ export class ProductRepository extends BaseRepository<any> {
     return db
       .select()
       .from(product)
-      .where((t) => eq(t.userId, userId))
       .limit(limit)
   }
 
@@ -47,7 +46,7 @@ export class ProductRepository extends BaseRepository<any> {
     return db
       .select()
       .from(product)
-      .where((t) => eq(t.userId, userId) && eq(t.isActive, true))
+      .where((t) => eq(t.isActive, true))
       .limit(limit)
   }
 }

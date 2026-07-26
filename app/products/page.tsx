@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Layout } from '@/components/Layout'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/Card'
 import { Table } from '@/components/Table'
@@ -8,68 +8,65 @@ import { Modal } from '@/components/Modal'
 import { Form } from '@/components/Form'
 import { Button } from '@/components/Button'
 import { useModal, useNotification } from '@/hooks'
-import { productAPI } from '@/services/api'
+import { useProducts } from '@/hooks/useProducts'
 import { getProductFormFields } from '@/features/products/fields'
 import { productColumns } from '@/features/products/columns'
-import { Product, FormConfig, TableConfig } from '@/types'
+import { FormConfig, TableConfig } from '@/types'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([])
+  const { data: products = [], isLoading, mutate, error } = useProducts()
   const [categories, setCategories] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const modal = useModal()
   const { notifications, add } = useNotification()
-  const [selectedProduct, setSelectedProduct] = useState<Product | undefined>()
-
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
-    setIsLoading(true)
-    try {
-      const productsRes = await productAPI.getAll(1, 50)
-      setProducts(productsRes.data)
-      
-      // Extract unique categories from products
-      const uniqueCategories = Array.from(new Set(productsRes.data.map((p) => p.category)))
-      setCategories(uniqueCategories)
-    } catch (error) {
-      add({ type: 'error', title: 'Error', message: 'Failed to load data' })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const [selectedProduct, setSelectedProduct] = useState<any>(undefined)
 
   const handleSubmit = async (data: Record<string, any>) => {
     try {
       if (modal.mode === 'create') {
         const productData = {
+          sku: data.sku || `SKU-${Date.now()}`,
           name: data.name,
+          description: data.description,
           category: data.category,
-          cost_price: data.cost_price,
-          selling_price: data.selling_price,
-          quantity: data.quantity,
+          unit: data.unit || 'piece',
+          costPrice: parseFloat(data.costPrice),
+          sellingPrice: parseFloat(data.sellingPrice),
+          reorderLevel: parseInt(data.reorderLevel),
         }
         
-        // Add new category if it doesn't exist
         if (!categories.includes(data.category)) {
           setCategories([...categories, data.category])
         }
         
-        const result = await productAPI.create(productData)
-        if (result.success) {
-          await loadData()
+        const response = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(productData),
+        })
+        
+        if (response.ok) {
+          await mutate()
           modal.close()
           add({ type: 'success', title: 'Success', message: 'Product created' })
+        } else {
+          const error = await response.json()
+          add({ type: 'error', title: 'Error', message: error.error })
         }
       } else if (modal.mode === 'edit' && selectedProduct) {
-        const result = await productAPI.update(selectedProduct.id, data)
-        if (result.success) {
-          await loadData()
+        const response = await fetch(`/api/products/${selectedProduct.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
+        
+        if (response.ok) {
+          await mutate()
           modal.close()
           add({ type: 'success', title: 'Success', message: 'Product updated' })
+        } else {
+          const error = await response.json()
+          add({ type: 'error', title: 'Error', message: error.error })
         }
       }
     } catch (error) {
@@ -77,13 +74,19 @@ export default function ProductsPage() {
     }
   }
 
-  const handleDelete = async (product: Product) => {
+  const handleDelete = async (product: any) => {
     if (!confirm('Delete this product?')) return
     try {
-      const result = await productAPI.delete(product.id)
-      if (result.success) {
-        await loadData()
+      const response = await fetch(`/api/products/${product.id}`, {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        await mutate()
         add({ type: 'success', title: 'Success', message: 'Product deleted' })
+      } else {
+        const error = await response.json()
+        add({ type: 'error', title: 'Error', message: error.error })
       }
     } catch (error) {
       add({ type: 'error', title: 'Error', message: 'Failed to delete product' })
