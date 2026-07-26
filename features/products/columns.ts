@@ -16,30 +16,37 @@ export const productColumns: TableColumn[] = [
     width: 120,
   },
   {
-    id: 'cost_price',
+    id: 'costPrice',
     header: 'Cost Price',
-    accessor: 'cost_price',
+    accessor: 'costPrice',
     sortable: true,
     width: 130,
-    cell: (value) => `$${parseFloat(value).toFixed(2)}`,
+    cell: (value) => {
+      const num = typeof value === 'string' ? parseFloat(value) : value
+      return isNaN(num) ? '-' : `$${num.toFixed(2)}`
+    },
   },
   {
-    id: 'selling_price',
+    id: 'sellingPrice',
     header: 'Selling Price',
-    accessor: 'selling_price',
+    accessor: 'sellingPrice',
     sortable: true,
     width: 130,
-    cell: (value) => `$${parseFloat(value).toFixed(2)}`,
+    cell: (value) => {
+      const num = typeof value === 'string' ? parseFloat(value) : value
+      return isNaN(num) ? '-' : `$${num.toFixed(2)}`
+    },
   },
   {
-    id: 'quantity',
+    id: 'reorderLevel',
     header: 'Stock',
-    accessor: 'quantity',
+    accessor: 'reorderLevel',
     sortable: true,
     width: 100,
     cell: (value) => {
-      const warning = value <= 10 ? ' ⚠' : ''
-      return `${value}${warning}`
+      const num = typeof value === 'number' ? value : parseInt(value)
+      const warning = num <= 10 ? ' ⚠' : ''
+      return `${num}${warning}`
     },
   },
 ]

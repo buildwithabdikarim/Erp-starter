@@ -24,7 +24,7 @@ export function useProducts(options?: { limit?: number; action?: string; q?: str
       if (options?.action) params.append('action', options.action)
       if (options?.q) params.append('q', options.q)
 
-      const response = await fetch(`/api/products?${params.toString()}`)
+      const response = await fetch(`/api/public/products?${params.toString()}`)
       if (!response.ok) throw new Error('Failed to fetch products')
       const result = await response.json()
       return result.data || result
