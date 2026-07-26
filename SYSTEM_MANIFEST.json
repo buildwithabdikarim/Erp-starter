@@ -1,0 +1,384 @@
+{
+  "project": {
+    "name": "Enterprise Resource Planning (ERP) System",
+    "version": "0.1.0",
+    "status": "ALPHA",
+    "lastUpdated": "2026-07-26",
+    "branch": "v0/mohamedadanmohamed113-7103-03f55daf",
+    "repository": "buildwithabdikarim/Erp-starter"
+  },
+  "tech_stack": {
+    "frontend": {
+      "framework": "Next.js 16",
+      "runtime": "React 19",
+      "styling": "TailwindCSS 4",
+      "state_management": "TanStack React Query 5",
+      "table_library": "TanStack React Table 8",
+      "form_handling": "React Hook Form 7",
+      "validation": "Zod 4",
+      "ui_icons": "Lucide React"
+    },
+    "backend": {
+      "platform": "Node.js",
+      "database": "Neon PostgreSQL",
+      "orm": "Drizzle ORM 0.45",
+      "authentication": "Better Auth 1.6",
+      "database_client": "pg 8.22"
+    },
+    "development": {
+      "language": "TypeScript 5.7",
+      "linter": "ESLint",
+      "package_manager": "pnpm"
+    }
+  },
+  "database": {
+    "provider": "Neon PostgreSQL",
+    "connection_type": "pooled",
+    "ssl_enabled": true,
+    "auth_enabled": true,
+    "tables_count": 18,
+    "tables": {
+      "auth": ["user", "session", "account", "verification"],
+      "rbac": ["role", "permission", "rolePermission", "userRole"],
+      "business": ["product", "supplier", "warehouse", "inventory"],
+      "operations": ["purchaseOrder", "purchaseOrderLineItem", "salesOrder", "salesOrderLineItem"],
+      "audit": ["auditLog", "stockMovement"]
+    },
+    "data_state": {
+      "seeded": true,
+      "products": 5,
+      "warehouses": 2,
+      "suppliers": 2,
+      "inventory_records": 10
+    }
+  },
+  "working_features": {
+    "authentication": {
+      "status": "OPERATIONAL",
+      "type": "Better Auth",
+      "auth_method": "Email + Password",
+      "routes": ["/sign-in", "/sign-up"],
+      "api_route": "/api/auth/[...all]",
+      "features": ["User Registration", "Login", "Session Persistence", "Protected Routes"]
+    },
+    "product_management": {
+      "status": "OPERATIONAL",
+      "page": "/products",
+      "operations": ["CREATE", "READ", "UPDATE", "DELETE", "SEARCH", "FILTER"],
+      "api_endpoints": {
+        "get_all": "GET /api/products",
+        "search": "GET /api/products?action=search&q=query",
+        "filter_category": "GET /api/products?action=category&q=category",
+        "get_active": "GET /api/products?action=active",
+        "create": "POST /api/products",
+        "get_by_id": "GET /api/products/[id]",
+        "update": "PUT /api/products/[id]",
+        "delete": "DELETE /api/products/[id]",
+        "public": "GET /api/public/products"
+      },
+      "features": ["Real-time CRUD", "Database Sync", "Search", "Soft Delete", "SKU Uniqueness"],
+      "data_fields": ["id", "code", "sku", "name", "description", "category", "unit", "costPrice", "sellingPrice", "reorderLevel", "reorderQuantity", "status", "deletedAt"]
+    },
+    "data_seeding": {
+      "status": "OPERATIONAL",
+      "endpoint": "POST /api/seed",
+      "seeded_data": {
+        "warehouses": 2,
+        "suppliers": 2,
+        "products": 5,
+        "inventory_records": 10
+      }
+    },
+    "state_management": {
+      "status": "OPERATIONAL",
+      "library": "TanStack React Query 5",
+      "caching": {
+        "stale_time": "5 minutes",
+        "gc_time": "10 minutes",
+        "retry_count": 1
+      },
+      "custom_hooks": ["useProducts", "useNotification", "useModal"]
+    },
+    "dashboard": {
+      "status": "OPERATIONAL_UI",
+      "page": "/",
+      "features": ["Stats Display", "Feature Cards", "Navigation", "Protected Routes"]
+    },
+    "components": {
+      "status": "OPERATIONAL",
+      "ui_components": ["Button", "Card", "Table", "Modal", "Form", "Alert", "Layout"],
+      "input_components": ["TextInput", "SelectInput", "TextAreaInput", "CheckboxInput", "CategorySelect"],
+      "special_components": ["ClientProvider", "auth-form", "dashboard-client"]
+    },
+    "form_system": {
+      "status": "OPERATIONAL",
+      "type": "Configuration-driven",
+      "validation": "Zod",
+      "features": ["Real-time Validation", "Field Type Support", "Auto Layout", "Error Messages", "Reset"],
+      "configurations": ["products", "sales", "suppliers"]
+    },
+    "table_system": {
+      "status": "OPERATIONAL",
+      "library": "TanStack React Table",
+      "features": ["Sorting", "Pagination", "Responsive", "Actions", "Formatting"],
+      "column_definitions": ["products", "sales", "suppliers"]
+    },
+    "print_functionality": {
+      "status": "READY_NOT_INTEGRATED",
+      "components": ["PrintTransaction", "PrintTransactionGroup", "BulkPrintDialog"]
+    },
+    "audit_logging": {
+      "status": "READY_NOT_INTEGRATED",
+      "schema": "auditLog",
+      "api_endpoint": "GET /api/audit",
+      "captures": ["userId", "action", "timestamp", "ipAddress", "userAgent"]
+    }
+  },
+  "in_progress_features": {
+    "supplier_management": {
+      "status": "PAGE_READY",
+      "completion": "30%",
+      "page": "/suppliers",
+      "what_done": ["UI Page", "Table Structure", "Form Configuration"],
+      "what_needed": ["API Endpoints", "Repository Methods", "Form Submission"]
+    },
+    "sales_order_system": {
+      "status": "PAGE_READY",
+      "completion": "25%",
+      "page": "/sales",
+      "what_done": ["UI Page", "Database Schema", "Table Structure"],
+      "what_needed": ["API Endpoints", "Line Item Handling", "Order Status Tracking"]
+    },
+    "purchase_order_system": {
+      "status": "SCHEMA_READY",
+      "completion": "15%",
+      "what_done": ["Database Schema", "API Routes"],
+      "what_needed": ["UI Pages", "API Endpoints", "Line Item Management"]
+    },
+    "inventory_management": {
+      "status": "SCHEMA_READY",
+      "completion": "10%",
+      "what_done": ["Database Tables", "Schema Design"],
+      "what_needed": ["Dashboard", "Stock Movements", "Stock Alerts"]
+    },
+    "warehouse_management": {
+      "status": "SCHEMA_READY",
+      "completion": "10%",
+      "what_done": ["Database Schema"],
+      "what_needed": ["UI Pages", "CRUD Operations", "Inventory Linking"]
+    }
+  },
+  "not_implemented_features": {
+    "rbac_system": {
+      "status": "SCHEMA_CREATED",
+      "completion": "0%",
+      "what_needed": ["Middleware", "Permission Checks", "Admin Panel", "Role Assignment UI"]
+    },
+    "advanced_filtering": {
+      "status": "NOT_STARTED",
+      "completion": "0%",
+      "what_needed": ["Date Range Filtering", "Multi-criteria Search", "Report Generation", "Export"]
+    },
+    "analytics": {
+      "status": "NOT_STARTED",
+      "completion": "0%",
+      "what_needed": ["Charts", "Metrics", "Trends", "KPI Tracking"]
+    },
+    "multi_tenancy": {
+      "status": "NOT_STARTED",
+      "completion": "0%",
+      "note": "Currently single-tenant design"
+    },
+    "notifications": {
+      "status": "UI_READY",
+      "completion": "20%",
+      "what_needed": ["Integration", "Email/SMS", "Preferences", "Real-time Alerts"]
+    },
+    "file_attachments": {
+      "status": "NOT_STARTED",
+      "completion": "0%",
+      "what_needed": ["Upload", "Storage", "Invoice Generation"]
+    }
+  },
+  "api_endpoints": {
+    "operational": [
+      {
+        "method": "GET",
+        "path": "/api/products",
+        "auth": true,
+        "description": "Fetch all products"
+      },
+      {
+        "method": "POST",
+        "path": "/api/products",
+        "auth": true,
+        "description": "Create product"
+      },
+      {
+        "method": "GET",
+        "path": "/api/products/[id]",
+        "auth": true,
+        "description": "Get product details"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/products/[id]",
+        "auth": true,
+        "description": "Update product"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/products/[id]",
+        "auth": true,
+        "description": "Delete product"
+      },
+      {
+        "method": "GET",
+        "path": "/api/public/products",
+        "auth": false,
+        "description": "Public product listing"
+      },
+      {
+        "method": "POST",
+        "path": "/api/seed",
+        "auth": false,
+        "description": "Seed database with starter data"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/[...all]",
+        "auth": true,
+        "description": "Better Auth handler"
+      }
+    ],
+    "ready_not_implemented": [
+      {
+        "method": "GET",
+        "path": "/api/audit",
+        "auth": true,
+        "description": "Get audit logs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/suppliers",
+        "auth": true,
+        "description": "Get all suppliers"
+      },
+      {
+        "method": "POST",
+        "path": "/api/suppliers",
+        "auth": true,
+        "description": "Create supplier"
+      },
+      {
+        "method": "GET",
+        "path": "/api/sales",
+        "auth": true,
+        "description": "Get sales orders"
+      },
+      {
+        "method": "POST",
+        "path": "/api/sales",
+        "auth": true,
+        "description": "Create sales order"
+      }
+    ]
+  },
+  "known_issues": [
+    {
+      "issue_id": 1,
+      "title": "QueryClient Provider Errors",
+      "status": "FIXED",
+      "description": "No QueryClient set errors in React Query",
+      "solution": "Fresh QueryClient instance per component tree using useMemo",
+      "file": "components/ClientProvider.tsx"
+    },
+    {
+      "issue_id": 2,
+      "title": "Number Field Validation Errors",
+      "status": "FIXED",
+      "description": "Invalid input: expected number, received string",
+      "solution": "String-to-number conversion in Form component",
+      "file": "components/Form.tsx"
+    },
+    {
+      "issue_id": 3,
+      "title": "Schema Mismatch",
+      "status": "FIXED",
+      "description": "Drizzle schema didn't match database structure",
+      "solution": "Updated all table definitions to match Neon schema",
+      "file": "lib/db/schema.ts"
+    },
+    {
+      "issue_id": 4,
+      "title": "Price Display Formatting",
+      "status": "FIXED",
+      "description": "Prices showed as NaN (stored as strings)",
+      "solution": "Added parsing and formatting in column definitions",
+      "file": "features/products/columns.ts"
+    }
+  ],
+  "deployment": {
+    "current_environment": "Development",
+    "preview_url": "localhost:3000",
+    "build_status": "READY",
+    "environment_configured": true,
+    "production_ready": true,
+    "recommendations": ["Implement RBAC", "Set up monitoring", "Configure email service"]
+  },
+  "next_priorities": [
+    {
+      "priority": 1,
+      "task": "Complete Supplier API",
+      "estimated_hours": "2-3",
+      "includes": ["CRUD endpoints", "Repository methods", "Data sync"]
+    },
+    {
+      "priority": 2,
+      "task": "Complete Sales Order System",
+      "estimated_hours": "3-4",
+      "includes": ["Endpoints", "Line items", "Status tracking"]
+    },
+    {
+      "priority": 3,
+      "task": "Implement Purchase Order System",
+      "estimated_hours": "3-4",
+      "includes": ["UI pages", "Endpoints", "Line item management"]
+    },
+    {
+      "priority": 4,
+      "task": "Add Inventory Tracking",
+      "estimated_hours": "2-3",
+      "includes": ["Dashboard", "Stock movements", "Reorder alerts"]
+    },
+    {
+      "priority": 5,
+      "task": "Implement RBAC System",
+      "estimated_hours": "3-4",
+      "includes": ["Middleware", "Admin panel", "Permission checks"]
+    },
+    {
+      "priority": 6,
+      "task": "Build Analytics Dashboard",
+      "estimated_hours": "4-5",
+      "includes": ["Charts", "Metrics", "Reporting"]
+    }
+  ],
+  "codebase_statistics": {
+    "typescript_files": 50,
+    "database_tables": 18,
+    "api_endpoints": 20,
+    "reusable_components": 15,
+    "database_schema_lines": 300,
+    "form_configurations": 3,
+    "page_components": 7
+  },
+  "commands": {
+    "seed_database": "curl -X POST http://localhost:3000/api/seed",
+    "view_products": "http://localhost:3000/products",
+    "public_api": "curl http://localhost:3000/api/public/products | jq",
+    "dev_server": "pnpm dev",
+    "build": "pnpm build",
+    "start": "pnpm start"
+  }
+}
