@@ -53,9 +53,20 @@ export interface TableColumn {
   header: string
   accessor?: string
   width?: number
+  /** Defaults to true when table enableSorting is on. */
   sortable?: boolean
+  /** Defaults to true when table enableFiltering is on; set false to exclude from search. */
   filterable?: boolean
   cell?: (value: any, row: any) => React.ReactNode
+}
+
+export interface TableAction {
+  label: string
+  icon?: React.ReactNode
+  onClick: (row: any) => void
+  variant?: 'primary' | 'secondary' | 'destructive' | 'outline' | 'ghost' | 'link'
+  /** Hide this action for a given row when false. */
+  visible?: (row: any) => boolean
 }
 
 export interface TableConfig {
@@ -66,13 +77,9 @@ export interface TableConfig {
   enablePagination?: boolean
   enableFiltering?: boolean
   enableColumnResizing?: boolean
+  filterPlaceholder?: string
   onRowClick?: (row: any) => void
-  actions?: {
-    label: string
-    icon?: React.ReactNode
-    onClick: (row: any) => void
-    variant?: 'default' | 'destructive' | 'secondary'
-  }[]
+  actions?: TableAction[]
 }
 
 // ============================================================================

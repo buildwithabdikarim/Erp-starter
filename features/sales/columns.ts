@@ -22,6 +22,7 @@ export const salesColumns: TableColumn[] = [
     header: 'Qty',
     accessor: 'quantity',
     sortable: true,
+    filterable: false,
     width: 80,
     cell: (value) => `${value}x`,
   },
@@ -30,6 +31,7 @@ export const salesColumns: TableColumn[] = [
     header: 'Unit Price',
     accessor: 'unit_price',
     sortable: true,
+    filterable: false,
     width: 120,
     cell: (value) => `$${(value as number).toFixed(2)}`,
   },
@@ -38,6 +40,7 @@ export const salesColumns: TableColumn[] = [
     header: 'Total',
     accessor: 'total_amount',
     sortable: true,
+    filterable: false,
     width: 120,
     cell: (value) => `$${(value as number).toFixed(2)}`,
   },
@@ -46,6 +49,7 @@ export const salesColumns: TableColumn[] = [
     header: 'Date',
     accessor: 'sale_date',
     sortable: true,
+    filterable: false,
     width: 130,
     cell: (value) => {
       const date = new Date(value as string)

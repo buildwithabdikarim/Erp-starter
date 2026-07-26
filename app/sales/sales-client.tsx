@@ -125,42 +125,43 @@ export function SalesClient({ access }: { access: UserAccess }) {
   }
 
   const tableConfig: TableConfig = {
-    columns: [
-      ...salesColumns,
-      {
-        id: 'actions',
-        header: 'Actions',
-        width: 150,
-        cell: (_: unknown, row: any) => (
-          <div className="flex gap-2">
-            <Button size="sm" variant="secondary" onClick={() => handlePrintSingle(row)}>
-              <Printer className="w-4 h-4" />
-            </Button>
-            <Can access={access} module="orders" action="update">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => {
-                  setSelectedSale(row)
-                  modal.open('edit', row)
-                }}
-              >
-                <Edit2 className="w-4 h-4" />
-              </Button>
-            </Can>
-            <Can access={access} module="orders" action="delete">
-              <Button size="sm" variant="destructive" onClick={() => handleDelete(row)}>
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </Can>
-          </div>
-        ),
-      },
-    ],
+    columns: salesColumns,
     data: sales,
     enableSorting: true,
     enablePagination: true,
     enableFiltering: true,
+    filterPlaceholder: 'Search sales by product or supplier…',
+    actions: [
+      {
+        label: '',
+        icon: <Printer className="w-4 h-4" />,
+        variant: 'secondary' as const,
+        onClick: (row: any) => handlePrintSingle(row),
+      },
+      ...(canUpdate
+        ? [
+            {
+              label: '',
+              icon: <Edit2 className="w-4 h-4" />,
+              variant: 'secondary' as const,
+              onClick: (row: any) => {
+                setSelectedSale(row)
+                modal.open('edit', row)
+              },
+            },
+          ]
+        : []),
+      ...(canDelete
+        ? [
+            {
+              label: '',
+              icon: <Trash2 className="w-4 h-4" />,
+              variant: 'destructive' as const,
+              onClick: (row: any) => handleDelete(row),
+            },
+          ]
+        : []),
+    ],
   }
 
   if (isLoading) {

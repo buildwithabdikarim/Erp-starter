@@ -24,7 +24,6 @@ export function SuppliersClient({ access }: { access: UserAccess }) {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | undefined>()
   const canUpdate = canAccess(access, 'suppliers', 'update')
   const canDelete = canAccess(access, 'suppliers', 'delete')
-  const showActions = canUpdate || canDelete
   const formConfig = getSupplierFormConfig(modal.mode === 'edit' ? 'edit' : 'create')
   const formKey = `${modal.mode}-${selectedSupplier?.id ?? 'new'}`
 
@@ -86,43 +85,37 @@ export function SuppliersClient({ access }: { access: UserAccess }) {
   }
 
   const tableConfig: TableConfig = {
-    columns: [
-      ...supplierColumns,
-      ...(showActions
-        ? [
-            {
-              id: 'actions',
-              header: 'Actions',
-              width: 120,
-              cell: (_: unknown, row: any) => (
-                <div className="flex gap-2">
-                  <Can access={access} module="suppliers" action="update">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => {
-                        setSelectedSupplier(row)
-                        modal.open('edit', row)
-                      }}
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                  </Can>
-                  <Can access={access} module="suppliers" action="delete">
-                    <Button size="sm" variant="destructive" onClick={() => handleDelete(row)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </Can>
-                </div>
-              ),
-            },
-          ]
-        : []),
-    ],
+    columns: supplierColumns,
     data: suppliers,
     enableSorting: true,
     enablePagination: true,
     enableFiltering: true,
+    filterPlaceholder: 'Search suppliers by name, email, phone, or address…',
+    actions: [
+      ...(canUpdate
+        ? [
+            {
+              label: '',
+              icon: <Edit2 className="w-4 h-4" />,
+              variant: 'secondary' as const,
+              onClick: (row: any) => {
+                setSelectedSupplier(row)
+                modal.open('edit', row)
+              },
+            },
+          ]
+        : []),
+      ...(canDelete
+        ? [
+            {
+              label: '',
+              icon: <Trash2 className="w-4 h-4" />,
+              variant: 'destructive' as const,
+              onClick: (row: any) => handleDelete(row),
+            },
+          ]
+        : []),
+    ],
   }
 
   if (isLoading) {

@@ -13,14 +13,15 @@ export const supplierColumns: TableColumn[] = [
     header: 'Email',
     accessor: 'email',
     sortable: true,
+    filterable: true,
     width: 220,
-    cell: (value) => value as string,
   },
   {
     id: 'phone',
     header: 'Phone',
     accessor: 'phone',
     sortable: true,
+    filterable: true,
     width: 150,
   },
   {

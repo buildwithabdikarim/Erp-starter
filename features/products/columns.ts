@@ -2,6 +2,22 @@ import { TableColumn } from '@/types'
 
 export const productColumns: TableColumn[] = [
   {
+    id: 'code',
+    header: 'Code',
+    accessor: 'code',
+    sortable: true,
+    filterable: true,
+    width: 110,
+  },
+  {
+    id: 'sku',
+    header: 'SKU',
+    accessor: 'sku',
+    sortable: true,
+    filterable: true,
+    width: 120,
+  },
+  {
     id: 'name',
     header: 'Product Name',
     accessor: 'name',
@@ -13,6 +29,7 @@ export const productColumns: TableColumn[] = [
     header: 'Category',
     accessor: 'category',
     sortable: true,
+    filterable: true,
     width: 120,
   },
   {
@@ -20,6 +37,7 @@ export const productColumns: TableColumn[] = [
     header: 'Cost Price',
     accessor: 'costPrice',
     sortable: true,
+    filterable: false,
     width: 130,
     cell: (value) => {
       const num = typeof value === 'string' ? parseFloat(value) : value
@@ -31,6 +49,7 @@ export const productColumns: TableColumn[] = [
     header: 'Selling Price',
     accessor: 'sellingPrice',
     sortable: true,
+    filterable: false,
     width: 130,
     cell: (value) => {
       const num = typeof value === 'string' ? parseFloat(value) : value
@@ -39,9 +58,10 @@ export const productColumns: TableColumn[] = [
   },
   {
     id: 'reorderLevel',
-    header: 'Stock',
+    header: 'Reorder',
     accessor: 'reorderLevel',
     sortable: true,
+    filterable: false,
     width: 100,
     cell: (value) => {
       const num = typeof value === 'number' ? value : parseInt(value)

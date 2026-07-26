@@ -14,8 +14,8 @@ import {
 import { cn } from '@/lib/utils'
 import { TableConfig } from '@/types'
 import { Button } from './Button'
-import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
-import { DEFAULT_PAGE_SIZE } from '@/constants'
+import { ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
+import { DEFAULT_PAGE_SIZE, MESSAGES } from '@/constants'
 
 interface TableProps {
   config: TableConfig
@@ -33,6 +33,11 @@ export const Table: React.FC<TableProps> = ({
     pageSize: config.pageSize || DEFAULT_PAGE_SIZE,
   })
 
+  const enableSorting = config.enableSorting !== false
+  const enableFiltering = !!config.enableFiltering
+  const enablePagination = config.enablePagination !== false
+  const hasActions = Boolean(config.actions?.length)
+
   const columnHelper = createColumnHelper<any>()
 
   const columns = useMemo(
@@ -41,10 +46,11 @@ export const Table: React.FC<TableProps> = ({
         columnHelper.accessor(col.accessor || col.id, {
           id: col.id,
           header: col.header,
+          enableSorting: enableSorting && col.sortable !== false,
+          enableGlobalFilter: enableFiltering && col.filterable !== false,
           cell: (info) => {
             if (col.cell) {
               const cellContent = col.cell(info.getValue(), info.row.original)
-              // If it returns a React element, render it; otherwise wrap in span
               return typeof cellContent === 'string' || typeof cellContent === 'number' ? (
                 <span>{cellContent}</span>
               ) : (
@@ -56,7 +62,7 @@ export const Table: React.FC<TableProps> = ({
           size: col.width,
         })
       ),
-    [config.columns, columnHelper]
+    [config.columns, columnHelper, enableSorting, enableFiltering]
   )
 
   const table = useReactTable({
@@ -71,25 +77,17 @@ export const Table: React.FC<TableProps> = ({
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: config.enableSorting ? getSortedRowModel() : undefined,
-    getFilteredRowModel: config.enableFiltering ? getFilteredRowModel() : undefined,
-    getPaginationRowModel: config.enablePagination ? getPaginationRowModel() : undefined,
+    getSortedRowModel: enableSorting ? getSortedRowModel() : undefined,
+    getFilteredRowModel: enableFiltering ? getFilteredRowModel() : undefined,
+    getPaginationRowModel: enablePagination ? getPaginationRowModel() : undefined,
   })
 
   const { rows } = table.getRowModel()
 
-  if (rows.length === 0) {
-    return (
-      <div className="border border-border rounded-lg p-8">
-        <p className="text-center text-muted-foreground">No data available</p>
-      </div>
-    )
-  }
-
   const SortIcon = ({ column }: { column: TanstackColumn<any, unknown> }) => {
     const isSorted = column.getIsSorted()
 
-    if (!config.enableSorting) return null
+    if (!enableSorting || !column.getCanSort()) return null
 
     if (isSorted === 'asc') {
       return <ChevronUp className="w-4 h-4" />
@@ -103,9 +101,31 @@ export const Table: React.FC<TableProps> = ({
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">
+      {enableFiltering && (
+        <div className="p-3 border-b border-border bg-muted/30">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="search"
+              value={globalFilter}
+              onChange={(e) => {
+                setGlobalFilter(e.target.value)
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+              }}
+              placeholder={config.filterPlaceholder || 'Search…'}
+              className={cn(
+                'w-full h-9 pl-9 pr-3 rounded-md border border-input bg-background text-sm',
+                'placeholder:text-muted-foreground',
+                'focus:outline-none focus:ring-2 focus:ring-ring'
+              )}
+              aria-label="Filter table"
+            />
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="w-full">
-          {/* Header */}
           <thead className="bg-muted/50 border-b border-border">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -113,10 +133,12 @@ export const Table: React.FC<TableProps> = ({
                   <th
                     key={header.id}
                     className="px-6 py-3 text-left text-sm font-semibold text-foreground"
+                    style={header.column.getSize() ? { width: header.column.getSize() } : undefined}
                   >
-                    {config.enableSorting && header.column.getCanSort() ? (
+                    {header.column.getCanSort() ? (
                       <button
-                        onClick={() => header.column.toggleSorting()}
+                        type="button"
+                        onClick={header.column.getToggleSortingHandler()}
                         className="flex items-center gap-2 hover:text-primary transition-colors"
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
@@ -127,61 +149,76 @@ export const Table: React.FC<TableProps> = ({
                     )}
                   </th>
                 ))}
-                {config.actions && <th className="px-6 py-3 text-left text-sm font-semibold">Actions</th>}
+                {hasActions && (
+                  <th className="px-6 py-3 text-left text-sm font-semibold">Actions</th>
+                )}
               </tr>
             ))}
           </thead>
 
-          {/* Body */}
           <tbody className="divide-y divide-border">
-            {rows.map((row) => (
-              <tr
-                key={row.id}
-                className={cn(
-                  'hover:bg-muted/50 transition-colors',
-                  onRowClickProp || config.onRowClick ? 'cursor-pointer' : ''
-                )}
-                onClick={() => {
-                  onRowClickProp?.(row.original)
-                  config.onRowClick?.(row.original)
-                }}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-6 py-4 text-sm text-foreground">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-                {config.actions && (
-                  <td className="px-6 py-4 text-sm">
-                    <div className="flex gap-2">
-                      {config.actions.map((action, idx) => (
-                        <Button
-                          key={idx}
-                          variant={(action.variant as 'primary' | 'secondary' | 'destructive' | 'outline' | 'ghost' | 'link' | undefined) || 'secondary'}
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            action.onClick(row.original)
-                          }}
-                        >
-                          {action.icon && <span>{action.icon}</span>}
-                          {action.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </td>
-                )}
+            {rows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={config.columns.length + (hasActions ? 1 : 0)}
+                  className="px-6 py-10 text-center text-sm text-muted-foreground"
+                >
+                  {globalFilter ? MESSAGES.empty.noResults : MESSAGES.empty.noData}
+                </td>
               </tr>
-            ))}
+            ) : (
+              rows.map((row) => (
+                <tr
+                  key={row.id}
+                  className={cn(
+                    'hover:bg-muted/50 transition-colors',
+                    onRowClickProp || config.onRowClick ? 'cursor-pointer' : ''
+                  )}
+                  onClick={() => {
+                    onRowClickProp?.(row.original)
+                    config.onRowClick?.(row.original)
+                  }}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-6 py-4 text-sm text-foreground">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                  {hasActions && (
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex gap-2">
+                        {config.actions!
+                          .filter((action) => action.visible?.(row.original) !== false)
+                          .map((action, idx) => (
+                            <Button
+                              key={`${action.label}-${idx}`}
+                              variant={action.variant || 'secondary'}
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                action.onClick(row.original)
+                              }}
+                            >
+                              {action.icon}
+                              {action.label ? <span>{action.label}</span> : null}
+                            </Button>
+                          ))}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
-      {/* Pagination */}
-      {config.enablePagination && (
+      {enablePagination && (
         <div className="flex items-center justify-between px-6 py-4 border-t border-border">
           <div className="text-sm text-muted-foreground">
-            {`Page ${table.getState().pagination.pageIndex + 1} of ${table.getPageCount()}`}
+            {table.getPageCount() === 0
+              ? 'Page 0 of 0'
+              : `Page ${table.getState().pagination.pageIndex + 1} of ${table.getPageCount()}`}
           </div>
           <div className="flex gap-2">
             <Button

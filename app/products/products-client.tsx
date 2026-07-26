@@ -46,7 +46,6 @@ export function ProductsClient({ access }: ProductsClientProps) {
   const canCreate = canAccess(access, 'products', 'create')
   const canUpdate = canAccess(access, 'products', 'update')
   const canDelete = canAccess(access, 'products', 'delete')
-  const showActions = canUpdate || canDelete
 
   const categories = useMemo(() => {
     const fromProducts = products
@@ -140,43 +139,37 @@ export function ProductsClient({ access }: ProductsClientProps) {
   }
 
   const tableConfig: TableConfig = {
-    columns: [
-      ...productColumns,
-      ...(showActions
-        ? [
-            {
-              id: 'actions',
-              header: 'Actions',
-              width: 120,
-              cell: (_: unknown, row: any) => (
-                <div className="flex gap-2">
-                  <Can access={access} module="products" action="update">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => {
-                        setSelectedProduct(row)
-                        modal.open('edit', row)
-                      }}
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                  </Can>
-                  <Can access={access} module="products" action="delete">
-                    <Button size="sm" variant="destructive" onClick={() => handleDelete(row)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </Can>
-                </div>
-              ),
-            },
-          ]
-        : []),
-    ],
+    columns: productColumns,
     data: products,
     enableSorting: true,
     enablePagination: true,
     enableFiltering: true,
+    filterPlaceholder: 'Search products by code, SKU, name, or category…',
+    actions: [
+      ...(canUpdate
+        ? [
+            {
+              label: '',
+              icon: <Edit2 className="w-4 h-4" />,
+              variant: 'secondary' as const,
+              onClick: (row: any) => {
+                setSelectedProduct(row)
+                modal.open('edit', row)
+              },
+            },
+          ]
+        : []),
+      ...(canDelete
+        ? [
+            {
+              label: '',
+              icon: <Trash2 className="w-4 h-4" />,
+              variant: 'destructive' as const,
+              onClick: (row: any) => handleDelete(row),
+            },
+          ]
+        : []),
+    ],
   }
 
   if (isLoading) {
