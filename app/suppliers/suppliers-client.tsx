@@ -10,9 +10,9 @@ import { Button } from '@/components/Button'
 import { Can } from '@/components/Can'
 import { useModal, useNotification } from '@/hooks'
 import { supplierAPI } from '@/services/api'
-import { supplierFormFields } from '@/features/suppliers/fields'
+import { getSupplierFormConfig } from '@/features/suppliers/fields'
 import { supplierColumns } from '@/features/suppliers/columns'
-import { Supplier, FormConfig, TableConfig } from '@/types'
+import { Supplier, TableConfig } from '@/types'
 import { canAccess, type UserAccess } from '@/lib/permissions'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 
@@ -25,6 +25,8 @@ export function SuppliersClient({ access }: { access: UserAccess }) {
   const canUpdate = canAccess(access, 'suppliers', 'update')
   const canDelete = canAccess(access, 'suppliers', 'delete')
   const showActions = canUpdate || canDelete
+  const formConfig = getSupplierFormConfig(modal.mode === 'edit' ? 'edit' : 'create')
+  const formKey = `${modal.mode}-${selectedSupplier?.id ?? 'new'}`
 
   useEffect(() => {
     loadData()
@@ -123,12 +125,6 @@ export function SuppliersClient({ access }: { access: UserAccess }) {
     enableFiltering: true,
   }
 
-  const formConfig: FormConfig = {
-    title: `${modal.mode === 'create' ? 'Create' : 'Edit'} Supplier`,
-    fields: supplierFormFields,
-    submitLabel: 'Save Supplier',
-  }
-
   if (isLoading) {
     return (
       <Layout>
@@ -198,6 +194,7 @@ export function SuppliersClient({ access }: { access: UserAccess }) {
       >
         <Form
           config={formConfig}
+          formKey={formKey}
           initialValues={selectedSupplier || {}}
           onSubmit={handleSubmit}
           onCancel={modal.close}

@@ -1,6 +1,7 @@
 import { z } from 'zod'
-import { FormField } from '@/types'
+import { FormConfig, FormField } from '@/types'
 
+/** Single source of truth for supplier forms. */
 export const supplierFormFields: FormField[] = [
   {
     name: 'name',
@@ -35,3 +36,10 @@ export const supplierFormFields: FormField[] = [
     validation: z.string().min(1, 'Address is required').max(200),
   },
 ]
+
+export const getSupplierFormConfig = (mode: 'create' | 'edit' = 'create'): FormConfig => ({
+  title: mode === 'create' ? 'Create Supplier' : 'Edit Supplier',
+  fields: supplierFormFields,
+  submitLabel: 'Save Supplier',
+  cancelLabel: 'Cancel',
+})

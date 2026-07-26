@@ -6,6 +6,9 @@ import { z } from 'zod'
 
 export type FieldType = 'text' | 'email' | 'password' | 'number' | 'textarea' | 'select' | 'checkbox' | 'date'
 
+/** Optional input renderer override — keeps Form generic (no field-name hardcoding). */
+export type FieldComponent = 'creatable-select'
+
 export interface SelectOption {
   value: string | number
   label: string
@@ -15,6 +18,8 @@ export interface FormField {
   name: string
   label: string
   type: FieldType
+  /** Use a specialized input while keeping Form domain-agnostic. */
+  component?: FieldComponent
   required?: boolean
   placeholder?: string
   options?: SelectOption[]

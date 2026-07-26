@@ -10,9 +10,9 @@ import { Button } from '@/components/Button'
 import { Can } from '@/components/Can'
 import { useModal, useNotification } from '@/hooks'
 import { saleAPI, productAPI, supplierAPI } from '@/services/api'
-import { getSalesFormFields } from '@/features/sales/fields'
+import { getSalesFormConfig } from '@/features/sales/fields'
 import { salesColumns } from '@/features/sales/columns'
-import { Sale, Product, Supplier, FormConfig, TableConfig } from '@/types'
+import { Sale, Product, Supplier, TableConfig } from '@/types'
 import { canAccess, type UserAccess } from '@/lib/permissions'
 import { Plus, Edit2, Trash2, Printer } from 'lucide-react'
 import { BulkPrintDialog } from '@/components/BulkPrintDialog'
@@ -35,6 +35,12 @@ export function SalesClient({ access }: { access: UserAccess }) {
   } | null>(null)
   const canUpdate = canAccess(access, 'orders', 'update')
   const canDelete = canAccess(access, 'orders', 'delete')
+  const formConfig = getSalesFormConfig(
+    products || [],
+    suppliers || [],
+    modal.mode === 'edit' ? 'edit' : 'create'
+  )
+  const formKey = `${modal.mode}-${selectedSale?.id ?? 'new'}`
 
   useEffect(() => {
     loadData()
@@ -157,12 +163,6 @@ export function SalesClient({ access }: { access: UserAccess }) {
     enableFiltering: true,
   }
 
-  const formConfig: FormConfig = {
-    title: `${modal.mode === 'create' ? 'Create' : 'Edit'} Sale`,
-    fields: getSalesFormFields(products || [], suppliers || []),
-    submitLabel: 'Save Sale',
-  }
-
   if (isLoading) {
     return (
       <Layout>
@@ -225,6 +225,7 @@ export function SalesClient({ access }: { access: UserAccess }) {
       >
         <Form
           config={formConfig}
+          formKey={formKey}
           initialValues={selectedSale || {}}
           onSubmit={handleSubmit}
           onCancel={modal.close}

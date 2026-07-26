@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Layout } from '@/components/Layout'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/Card'
 import { Table } from '@/components/Table'
@@ -10,9 +10,9 @@ import { Button } from '@/components/Button'
 import { Can } from '@/components/Can'
 import { useModal, useNotification } from '@/hooks'
 import { useProducts } from '@/hooks/useProducts'
-import { getProductFormFields } from '@/features/products/fields'
+import { getProductFormConfig } from '@/features/products/fields'
 import { productColumns } from '@/features/products/columns'
-import { FormConfig, TableConfig } from '@/types'
+import { TableConfig } from '@/types'
 import { canAccess, type UserAccess } from '@/lib/permissions'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 
@@ -20,9 +20,25 @@ type ProductsClientProps = {
   access: UserAccess
 }
 
+function toProductPayload(data: Record<string, any>) {
+  return {
+    code: data.code,
+    sku: data.sku,
+    name: data.name,
+    description: data.description || null,
+    category: data.category,
+    unit: data.unit || 'piece',
+    costPrice: data.costPrice,
+    sellingPrice: data.sellingPrice,
+    reorderLevel: data.reorderLevel ?? 10,
+    reorderQuantity: data.reorderQuantity ?? 50,
+    status: data.status || 'active',
+  }
+}
+
 export function ProductsClient({ access }: ProductsClientProps) {
   const { data: products = [], isLoading, refetch } = useProducts()
-  const [categories, setCategories] = useState<string[]>([])
+  const [extraCategories, setExtraCategories] = useState<string[]>([])
   const modal = useModal()
   const { notifications, add } = useNotification()
   const [selectedProduct, setSelectedProduct] = useState<any>(undefined)
@@ -32,33 +48,38 @@ export function ProductsClient({ access }: ProductsClientProps) {
   const canDelete = canAccess(access, 'products', 'delete')
   const showActions = canUpdate || canDelete
 
+  const categories = useMemo(() => {
+    const fromProducts = products
+      .map((p: { category?: string }) => p.category)
+      .filter((c: string | undefined): c is string => Boolean(c))
+    return [...new Set([...fromProducts, ...extraCategories])]
+  }, [products, extraCategories])
+
+  const formConfig = getProductFormConfig(
+    categories,
+    modal.mode === 'edit' ? 'edit' : 'create'
+  )
+
+  const formKey = `${modal.mode}-${selectedProduct?.id ?? 'new'}`
+
   const handleSubmit = async (data: Record<string, any>) => {
     try {
+      if (data.category && !categories.includes(data.category)) {
+        setExtraCategories((prev) => [...prev, data.category])
+      }
+
+      const payload = toProductPayload(data)
+
       if (modal.mode === 'create') {
         if (!canCreate) {
           add({ type: 'error', title: 'Forbidden', message: 'Missing permission: products:create' })
           return
         }
 
-        const productData = {
-          sku: data.sku || `SKU-${Date.now()}`,
-          name: data.name,
-          description: data.description,
-          category: data.category,
-          unit: data.unit || 'piece',
-          costPrice: parseFloat(data.costPrice),
-          sellingPrice: parseFloat(data.sellingPrice),
-          reorderLevel: parseInt(data.reorderLevel),
-        }
-
-        if (!categories.includes(data.category)) {
-          setCategories([...categories, data.category])
-        }
-
         const response = await fetch('/api/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(productData),
+          body: JSON.stringify(payload),
         })
 
         if (response.ok) {
@@ -78,7 +99,7 @@ export function ProductsClient({ access }: ProductsClientProps) {
         const response = await fetch(`/api/products/${selectedProduct.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+          body: JSON.stringify(payload),
         })
 
         if (response.ok) {
@@ -158,12 +179,6 @@ export function ProductsClient({ access }: ProductsClientProps) {
     enableFiltering: true,
   }
 
-  const formConfig: FormConfig = {
-    title: `${modal.mode === 'create' ? 'Create' : 'Edit'} Product`,
-    fields: getProductFormFields(categories),
-    submitLabel: 'Save Product',
-  }
-
   if (isLoading) {
     return (
       <Layout>
@@ -223,6 +238,7 @@ export function ProductsClient({ access }: ProductsClientProps) {
       >
         <Form
           config={formConfig}
+          formKey={formKey}
           initialValues={selectedProduct || {}}
           onSubmit={handleSubmit}
           onCancel={modal.close}

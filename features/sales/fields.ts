@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { FormField } from '@/types'
-import { Product, Supplier } from '@/types'
+import { FormConfig, FormField, Product, Supplier } from '@/types'
 
+/** Single source of truth for sales forms. */
 export const getSalesFormFields = (products: Product[], suppliers: Supplier[]): FormField[] => [
   {
     name: 'product_id',
@@ -11,7 +11,7 @@ export const getSalesFormFields = (products: Product[], suppliers: Supplier[]): 
     placeholder: 'Select a product',
     options: products.map((p) => ({
       value: p.id,
-      label: `${p.name} ($${p.selling_price.toFixed(2)})`,
+      label: `${p.name} ($${Number(p.selling_price ?? 0).toFixed(2)})`,
     })),
     validation: z.string().min(1, 'Product is required'),
   },
@@ -53,3 +53,14 @@ export const getSalesFormFields = (products: Product[], suppliers: Supplier[]): 
     validation: z.string().min(1, 'Sale date is required'),
   },
 ]
+
+export const getSalesFormConfig = (
+  products: Product[],
+  suppliers: Supplier[],
+  mode: 'create' | 'edit' = 'create'
+): FormConfig => ({
+  title: mode === 'create' ? 'Create Sale' : 'Edit Sale',
+  fields: getSalesFormFields(products, suppliers),
+  submitLabel: 'Save Sale',
+  cancelLabel: 'Cancel',
+})
