@@ -28,8 +28,8 @@ export const PrintTransaction: React.FC<PrintTransactionProps> = ({
           {/* Left Column */}
           <div className="space-y-4">
             <div>
-              <p className="text-xs font-semibold text-gray-600 uppercase">Supplier</p>
-              <p className="text-lg font-medium">{sale.supplier_name}</p>
+              <p className="text-xs font-semibold text-gray-600 uppercase">Customer</p>
+              <p className="text-lg font-medium">{sale.supplier_name || sale.customerName}</p>
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-600 uppercase">Product</p>

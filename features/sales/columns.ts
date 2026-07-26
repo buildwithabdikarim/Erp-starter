@@ -2,19 +2,27 @@ import { TableColumn } from '@/types'
 
 export const salesColumns: TableColumn[] = [
   {
+    id: 'code',
+    header: 'Order Code',
+    accessor: 'code',
+    sortable: true,
+    filterable: true,
+    width: 130,
+  },
+  {
+    id: 'customerName',
+    header: 'Customer',
+    accessor: 'customerName',
+    sortable: true,
+    filterable: true,
+    width: 160,
+  },
+  {
     id: 'product_name',
     header: 'Product',
     accessor: 'product_name',
     sortable: true,
     width: 180,
-    filterable: true,
-  },
-  {
-    id: 'supplier_name',
-    header: 'Supplier',
-    accessor: 'supplier_name',
-    sortable: true,
-    width: 150,
     filterable: true,
   },
   {
@@ -33,7 +41,7 @@ export const salesColumns: TableColumn[] = [
     sortable: true,
     filterable: false,
     width: 120,
-    cell: (value) => `$${(value as number).toFixed(2)}`,
+    cell: (value) => `$${Number(value).toFixed(2)}`,
   },
   {
     id: 'total_amount',
@@ -42,7 +50,7 @@ export const salesColumns: TableColumn[] = [
     sortable: true,
     filterable: false,
     width: 120,
-    cell: (value) => `$${(value as number).toFixed(2)}`,
+    cell: (value) => `$${Number(value).toFixed(2)}`,
   },
   {
     id: 'sale_date',
@@ -52,6 +60,7 @@ export const salesColumns: TableColumn[] = [
     filterable: false,
     width: 130,
     cell: (value) => {
+      if (!value) return '-'
       const date = new Date(value as string)
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     },

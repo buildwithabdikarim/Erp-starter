@@ -104,27 +104,41 @@ export interface BaseEntity {
 }
 
 export interface Product extends BaseEntity {
+  code?: string
+  sku?: string
   name: string
-  category: string
-  cost_price: number
-  selling_price: number
-  quantity: number
+  category?: string
+  costPrice?: number | string
+  sellingPrice?: number | string
+  // Legacy mock-shaped fields (avoid in new code)
+  cost_price?: number
+  selling_price?: number
+  quantity?: number
 }
 
 export interface Supplier extends BaseEntity {
+  code?: string
   name: string
-  email: string
-  phone: string
-  address: string
+  email?: string | null
+  phone?: string | null
+  address?: string | null
+  status?: string
 }
 
+/** Flattened sales-order row used by the sales table / print views. */
 export interface Sale extends BaseEntity {
-  product_id: string
-  supplier_id: string
+  code?: string
+  customerName?: string
+  productId?: string
+  product_id?: string
+  product_name?: string
+  supplier_name?: string
   quantity: number
   unit_price: number
   total_amount: number
   sale_date: string
+  status?: string
+  lineItemId?: string
 }
 
 // ============================================================================

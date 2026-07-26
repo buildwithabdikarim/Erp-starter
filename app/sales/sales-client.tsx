@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Layout } from '@/components/Layout'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/Card'
 import { Table } from '@/components/Table'
@@ -9,20 +9,20 @@ import { Form } from '@/components/Form'
 import { Button } from '@/components/Button'
 import { Can } from '@/components/Can'
 import { useModal, useNotification } from '@/hooks'
-import { saleAPI, productAPI, supplierAPI } from '@/services/api'
 import { getSalesFormConfig } from '@/features/sales/fields'
 import { salesColumns } from '@/features/sales/columns'
-import { Sale, Product, Supplier, TableConfig } from '@/types'
+import { Sale, Product, TableConfig } from '@/types'
 import { canAccess, type UserAccess } from '@/lib/permissions'
 import { Plus, Edit2, Trash2, Printer } from 'lucide-react'
 import { BulkPrintDialog } from '@/components/BulkPrintDialog'
 import { PrintTransaction } from '@/components/PrintTransaction'
 import { PrintTransactionGroup } from '@/components/PrintTransactionGroup'
 
+type SalesRow = Sale & { product_name: string; supplier_name: string }
+
 export function SalesClient({ access }: { access: UserAccess }) {
-  const [sales, setSales] = useState<(Sale & { product_name: string; supplier_name: string })[]>([])
+  const [sales, setSales] = useState<SalesRow[]>([])
   const [products, setProducts] = useState<Product[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const modal = useModal()
   const { notifications, add } = useNotification()
@@ -30,16 +30,12 @@ export function SalesClient({ access }: { access: UserAccess }) {
   const [bulkPrintOpen, setBulkPrintOpen] = useState(false)
   const [printMode, setPrintMode] = useState<'single' | 'group' | null>(null)
   const [printData, setPrintData] = useState<{
-    sales: (Sale & { product_name: string; supplier_name: string })[]
+    sales: SalesRow[]
     groupBy: 'date' | 'supplier' | 'manual'
   } | null>(null)
   const canUpdate = canAccess(access, 'orders', 'update')
   const canDelete = canAccess(access, 'orders', 'delete')
-  const formConfig = getSalesFormConfig(
-    products || [],
-    suppliers || [],
-    modal.mode === 'edit' ? 'edit' : 'create'
-  )
+  const formConfig = getSalesFormConfig(products || [], modal.mode === 'edit' ? 'edit' : 'create')
   const formKey = `${modal.mode}-${selectedSale?.id ?? 'new'}`
 
   useEffect(() => {
@@ -49,21 +45,20 @@ export function SalesClient({ access }: { access: UserAccess }) {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      const [salesRes, productsRes, suppliersRes] = await Promise.all([
-        saleAPI.getAll(1, 50),
-        productAPI.getAll(1, 100),
-        supplierAPI.getAll(1, 100),
+      const [salesRes, productsRes] = await Promise.all([
+        fetch('/api/sales?limit=100'),
+        fetch('/api/products?limit=100'),
       ])
-      
-      const enrichedSales = (salesRes.data as Sale[]).map((sale) => ({
-        ...sale,
-        product_name: productsRes.data.find((p) => p.id === sale.product_id)?.name || 'Unknown',
-        supplier_name: suppliersRes.data.find((s) => s.id === sale.supplier_id)?.name || 'Unknown',
-      }))
-      
-      setSales(enrichedSales)
-      setProducts(productsRes.data)
-      setSuppliers(suppliersRes.data)
+
+      if (!salesRes.ok || !productsRes.ok) {
+        throw new Error('Failed to load sales data')
+      }
+
+      const salesJson = await salesRes.json()
+      const productsJson = await productsRes.json()
+
+      setSales(salesJson.data || [])
+      setProducts(productsJson.data || [])
     } catch (error) {
       add({ type: 'error', title: 'Error', message: 'Failed to load data' })
     } finally {
@@ -73,28 +68,52 @@ export function SalesClient({ access }: { access: UserAccess }) {
 
   const handleSubmit = async (data: Record<string, any>) => {
     try {
+      const payload = {
+        customerName: data.customerName,
+        productId: data.productId,
+        quantity: data.quantity,
+        unitPrice: data.unitPrice,
+        orderDate: data.orderDate,
+      }
+
       if (modal.mode === 'create') {
-        const saleData = {
-          product_id: data.product_id,
-          supplier_id: data.supplier_id,
-          quantity: data.quantity,
-          unit_price: data.unit_price,
-          total_amount: data.quantity * data.unit_price,
-          sale_date: data.sale_date,
+        if (!canAccess(access, 'orders', 'create')) {
+          add({ type: 'error', title: 'Forbidden', message: 'Missing permission: orders:create' })
+          return
         }
-        const result = await saleAPI.create(saleData)
-        if (result.success) {
-          await loadData()
-          modal.close()
-          add({ type: 'success', title: 'Success', message: 'Sale created' })
+
+        const response = await fetch('/api/sales', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const result = await response.json()
+        if (!response.ok) {
+          add({ type: 'error', title: 'Error', message: result.message || result.error })
+          return
         }
+        await loadData()
+        modal.close()
+        add({ type: 'success', title: 'Success', message: 'Sale created' })
       } else if (modal.mode === 'edit' && selectedSale) {
-        const result = await saleAPI.update(selectedSale.id, data)
-        if (result.success) {
-          await loadData()
-          modal.close()
-          add({ type: 'success', title: 'Success', message: 'Sale updated' })
+        if (!canUpdate) {
+          add({ type: 'error', title: 'Forbidden', message: 'Missing permission: orders:update' })
+          return
         }
+
+        const response = await fetch(`/api/sales/${selectedSale.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const result = await response.json()
+        if (!response.ok) {
+          add({ type: 'error', title: 'Error', message: result.message || result.error })
+          return
+        }
+        await loadData()
+        modal.close()
+        add({ type: 'success', title: 'Success', message: 'Sale updated' })
       }
     } catch (error) {
       add({ type: 'error', title: 'Error', message: 'Failed to save sale' })
@@ -102,27 +121,46 @@ export function SalesClient({ access }: { access: UserAccess }) {
   }
 
   const handleDelete = async (sale: Sale) => {
+    if (!canDelete) {
+      add({ type: 'error', title: 'Forbidden', message: 'Missing permission: orders:delete' })
+      return
+    }
     if (!confirm('Delete this sale?')) return
     try {
-      const result = await saleAPI.delete(sale.id)
-      if (result.success) {
-        await loadData()
-        add({ type: 'success', title: 'Success', message: 'Sale deleted' })
+      const response = await fetch(`/api/sales/${sale.id}`, { method: 'DELETE' })
+      const result = await response.json()
+      if (!response.ok) {
+        add({ type: 'error', title: 'Error', message: result.message || result.error })
+        return
       }
+      await loadData()
+      add({ type: 'success', title: 'Success', message: 'Sale deleted' })
     } catch (error) {
       add({ type: 'error', title: 'Error', message: 'Failed to delete sale' })
     }
   }
 
-  const handlePrintSingle = (sale: Sale & { product_name: string; supplier_name: string }) => {
+  const handlePrintSingle = (sale: SalesRow) => {
     setPrintMode('single')
     setPrintData({ sales: [sale], groupBy: 'manual' })
   }
 
-  const handleBulkPrint = (selectedSales: (Sale & { product_name: string; supplier_name: string })[], groupBy: 'date' | 'supplier' | 'manual') => {
+  const handleBulkPrint = (selectedSales: SalesRow[], groupBy: 'date' | 'supplier' | 'manual') => {
     setPrintMode('group')
     setPrintData({ sales: selectedSales, groupBy })
   }
+
+  const editInitialValues = selectedSale
+    ? {
+        customerName: selectedSale.customerName,
+        productId: selectedSale.productId,
+        quantity: selectedSale.quantity,
+        unitPrice: selectedSale.unit_price,
+        orderDate: selectedSale.sale_date
+          ? new Date(selectedSale.sale_date).toISOString().slice(0, 10)
+          : '',
+      }
+    : {}
 
   const tableConfig: TableConfig = {
     columns: salesColumns,
@@ -130,7 +168,7 @@ export function SalesClient({ access }: { access: UserAccess }) {
     enableSorting: true,
     enablePagination: true,
     enableFiltering: true,
-    filterPlaceholder: 'Search sales by product or supplier…',
+    filterPlaceholder: 'Search sales by code, customer, or product…',
     actions: [
       {
         label: '',
@@ -200,7 +238,7 @@ export function SalesClient({ access }: { access: UserAccess }) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Sales Transactions</CardTitle>
+            <CardTitle>Sales Orders</CardTitle>
           </CardHeader>
           <CardContent>
             <Table config={tableConfig} />
@@ -208,7 +246,6 @@ export function SalesClient({ access }: { access: UserAccess }) {
         </Card>
       </div>
 
-      {/* Notifications */}
       <div className="fixed bottom-4 right-4 max-w-md space-y-2 z-50">
         {notifications.map((n) => (
           <div key={n.id} className="bg-background border border-border rounded-lg p-4 shadow-lg">
@@ -217,32 +254,24 @@ export function SalesClient({ access }: { access: UserAccess }) {
         ))}
       </div>
 
-      {/* Modal */}
-      <Modal
-        isOpen={modal.isOpen}
-        onClose={modal.close}
-        title={formConfig.title || ''}
-        width="lg"
-      >
+      <Modal isOpen={modal.isOpen} onClose={modal.close} title={formConfig.title || ''} width="lg">
         <Form
           config={formConfig}
           formKey={formKey}
-          initialValues={selectedSale || {}}
+          initialValues={editInitialValues}
           onSubmit={handleSubmit}
           onCancel={modal.close}
         />
       </Modal>
 
-      {/* Bulk Print Dialog */}
       <BulkPrintDialog
         isOpen={bulkPrintOpen}
         onClose={() => setBulkPrintOpen(false)}
         sales={sales}
-        suppliers={suppliers}
+        suppliers={[]}
         onPrint={handleBulkPrint}
       />
 
-      {/* Print Views */}
       {printMode === 'single' && printData && (
         <div className="fixed inset-0 bg-white z-50 overflow-auto no-print">
           <div className="p-4 bg-background border-b border-border sticky top-0 z-10 flex justify-between items-center">
@@ -272,7 +301,13 @@ export function SalesClient({ access }: { access: UserAccess }) {
           <PrintTransactionGroup
             transactions={printData.sales}
             groupBy={printData.groupBy}
-            title={`Transactions Report - ${printData.groupBy === 'date' ? 'By Date' : printData.groupBy === 'supplier' ? 'By Supplier' : 'Manual Selection'}`}
+            title={`Transactions Report - ${
+              printData.groupBy === 'date'
+                ? 'By Date'
+                : printData.groupBy === 'supplier'
+                  ? 'By Customer'
+                  : 'Manual Selection'
+            }`}
           />
         </div>
       )}

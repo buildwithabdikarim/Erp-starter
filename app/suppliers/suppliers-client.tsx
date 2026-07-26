@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Layout } from '@/components/Layout'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/Card'
 import { Table } from '@/components/Table'
@@ -9,7 +9,6 @@ import { Form } from '@/components/Form'
 import { Button } from '@/components/Button'
 import { Can } from '@/components/Can'
 import { useModal, useNotification } from '@/hooks'
-import { supplierAPI } from '@/services/api'
 import { getSupplierFormConfig } from '@/features/suppliers/fields'
 import { supplierColumns } from '@/features/suppliers/columns'
 import { Supplier, TableConfig } from '@/types'
@@ -34,10 +33,19 @@ export function SuppliersClient({ access }: { access: UserAccess }) {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      const result = await supplierAPI.getAll(1, 50)
-      setSuppliers(result.data)
+      const response = await fetch('/api/suppliers?limit=100')
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.message || error.error || 'Failed to load suppliers')
+      }
+      const result = await response.json()
+      setSuppliers(result.data || [])
     } catch (error) {
-      add({ type: 'error', title: 'Error', message: 'Failed to load suppliers' })
+      add({
+        type: 'error',
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to load suppliers',
+      })
     } finally {
       setIsLoading(false)
     }
@@ -46,25 +54,43 @@ export function SuppliersClient({ access }: { access: UserAccess }) {
   const handleSubmit = async (data: Record<string, any>) => {
     try {
       if (modal.mode === 'create') {
-        const supplierData = {
-          name: data.name,
-          email: data.email,
-          phone: data.phone,
-          address: data.address,
+        if (!canAccess(access, 'suppliers', 'create')) {
+          add({ type: 'error', title: 'Forbidden', message: 'Missing permission: suppliers:create' })
+          return
         }
-        const result = await supplierAPI.create(supplierData)
-        if (result.success) {
-          await loadData()
-          modal.close()
-          add({ type: 'success', title: 'Success', message: 'Supplier created' })
+
+        const response = await fetch('/api/suppliers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
+        const result = await response.json()
+        if (!response.ok) {
+          add({ type: 'error', title: 'Error', message: result.message || result.error })
+          return
         }
+        await loadData()
+        modal.close()
+        add({ type: 'success', title: 'Success', message: 'Supplier created' })
       } else if (modal.mode === 'edit' && selectedSupplier) {
-        const result = await supplierAPI.update(selectedSupplier.id, data)
-        if (result.success) {
-          await loadData()
-          modal.close()
-          add({ type: 'success', title: 'Success', message: 'Supplier updated' })
+        if (!canUpdate) {
+          add({ type: 'error', title: 'Forbidden', message: 'Missing permission: suppliers:update' })
+          return
         }
+
+        const response = await fetch(`/api/suppliers/${selectedSupplier.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
+        const result = await response.json()
+        if (!response.ok) {
+          add({ type: 'error', title: 'Error', message: result.message || result.error })
+          return
+        }
+        await loadData()
+        modal.close()
+        add({ type: 'success', title: 'Success', message: 'Supplier updated' })
       }
     } catch (error) {
       add({ type: 'error', title: 'Error', message: 'Failed to save supplier' })
@@ -72,13 +98,20 @@ export function SuppliersClient({ access }: { access: UserAccess }) {
   }
 
   const handleDelete = async (supplier: Supplier) => {
+    if (!canDelete) {
+      add({ type: 'error', title: 'Forbidden', message: 'Missing permission: suppliers:delete' })
+      return
+    }
     if (!confirm('Delete this supplier?')) return
     try {
-      const result = await supplierAPI.delete(supplier.id)
-      if (result.success) {
-        await loadData()
-        add({ type: 'success', title: 'Success', message: 'Supplier deleted' })
+      const response = await fetch(`/api/suppliers/${supplier.id}`, { method: 'DELETE' })
+      const result = await response.json()
+      if (!response.ok) {
+        add({ type: 'error', title: 'Error', message: result.message || result.error })
+        return
       }
+      await loadData()
+      add({ type: 'success', title: 'Success', message: 'Supplier deleted' })
     } catch (error) {
       add({ type: 'error', title: 'Error', message: 'Failed to delete supplier' })
     }
@@ -90,7 +123,7 @@ export function SuppliersClient({ access }: { access: UserAccess }) {
     enableSorting: true,
     enablePagination: true,
     enableFiltering: true,
-    filterPlaceholder: 'Search suppliers by name, email, phone, or address…',
+    filterPlaceholder: 'Search suppliers by code, name, email, phone, or address…',
     actions: [
       ...(canUpdate
         ? [
@@ -156,7 +189,6 @@ export function SuppliersClient({ access }: { access: UserAccess }) {
         </Card>
       </div>
 
-      {/* Notifications */}
       <div className="fixed bottom-4 right-4 max-w-md space-y-2 z-50">
         {notifications.map((n) => (
           <div key={n.id} className="bg-background border border-border rounded-lg p-4 shadow-lg">
@@ -165,26 +197,7 @@ export function SuppliersClient({ access }: { access: UserAccess }) {
         ))}
       </div>
 
-      {/* Modal */}
-      <Modal
-        isOpen={modal.isOpen}
-        onClose={modal.close}
-        title={formConfig.title || ''}
-        width="lg"
-        footer={
-          <>
-            <Button variant="outline" onClick={modal.close}>
-              Cancel
-            </Button>
-            <Button onClick={() => {
-              const form = document.querySelector('form')
-              form?.dispatchEvent(new Event('submit', { bubbles: true }))
-            }}>
-              {formConfig.submitLabel || 'Save'}
-            </Button>
-          </>
-        }
-      >
+      <Modal isOpen={modal.isOpen} onClose={modal.close} title={formConfig.title || ''} width="lg">
         <Form
           config={formConfig}
           formKey={formKey}
