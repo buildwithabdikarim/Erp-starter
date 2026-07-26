@@ -15,113 +15,27 @@ export async function POST(request: Request) {
   try {
     console.log('Starting database seed via API...')
 
-    // 1. Create test user
-    const testUserId = 'user-' + Date.now()
+    // Get or create test user
+    let testUserId = 'user-1785048354294'
+    const existingUser = await db.select().from(user).limit(1)
+    if (existingUser.length > 0) {
+      testUserId = existingUser[0].id
+    }
 
-    await db.insert(user).values({
-      id: testUserId,
-      email: 'admin@erp.local',
-      name: 'Admin User',
-      emailVerified: true,
-    })
-
-    // 2. Create roles
-    const adminRole = await db
-      .insert(role)
-      .values({
-        name: 'Admin',
-        description: 'Administrator with full access',
-      })
-      .returning()
-      .then((r) => r[0])
-
-    const managerRole = await db
-      .insert(role)
-      .values({
-        name: 'Manager',
-        description: 'Manager with product and order management access',
-      })
-      .returning()
-      .then((r) => r[0])
-
-    const operatorRole = await db
-      .insert(role)
-      .values({
-        name: 'Operator',
-        description: 'Operator with read and basic write access',
-      })
-      .returning()
-      .then((r) => r[0])
-
-    // 3. Create permissions
-    const permissions = [
-      { module: 'products', action: 'create', name: 'product:create', description: 'Create products' },
-      { module: 'products', action: 'read', name: 'product:read', description: 'View products' },
-      { module: 'products', action: 'update', name: 'product:update', description: 'Update products' },
-      { module: 'products', action: 'delete', name: 'product:delete', description: 'Delete products' },
-      { module: 'suppliers', action: 'create', name: 'supplier:create', description: 'Create suppliers' },
-      { module: 'suppliers', action: 'read', name: 'supplier:read', description: 'View suppliers' },
-      { module: 'suppliers', action: 'update', name: 'supplier:update', description: 'Update suppliers' },
-      { module: 'orders', action: 'create', name: 'order:create', description: 'Create orders' },
-      { module: 'orders', action: 'read', name: 'order:read', description: 'View orders' },
-      { module: 'inventory', action: 'read', name: 'inventory:read', description: 'View inventory' },
-      { module: 'inventory', action: 'adjust', name: 'inventory:adjust', description: 'Adjust inventory' },
-    ]
-
-    const permissionIds = await Promise.all(
-      permissions.map(async (perm) => {
-        const result = await db.insert(permission).values(perm).returning().then((r) => r[0])
-        return result.id
-      })
-    )
-
-    // Assign permissions to Admin role (all)
-    await Promise.all(
-      permissionIds.map((permId) =>
-        db.insert(rolePermission).values({
-          roleId: adminRole.id,
-          permissionId: permId,
-        })
-      )
-    )
-
-    // Assign subset to Manager
-    const managerPermissions = permissionIds.filter((_, idx) => idx < 8)
-    await Promise.all(
-      managerPermissions.map((permId) =>
-        db.insert(rolePermission).values({
-          roleId: managerRole.id,
-          permissionId: permId,
-        })
-      )
-    )
-
-    // Assign read-only to Operator
-    const operatorPermissions = permissionIds.filter((_, idx) => [1, 5, 8, 10].includes(idx))
-    await Promise.all(
-      operatorPermissions.map((permId) =>
-        db.insert(rolePermission).values({
-          roleId: operatorRole.id,
-          permissionId: permId,
-        })
-      )
-    )
-
-    // 4. Assign Admin role to test user
-    await db.insert(userRole).values({
-      userId: testUserId,
-      roleId: adminRole.id,
-    })
+    console.log('Skipping RBAC setup - roles and permissions already exist')
 
     // 5. Create warehouses
     const warehouse1 = await db
       .insert(warehouse)
       .values({
-        userId: testUserId,
+        id: 'wh-' + Date.now() + '-1',
+        code: 'WH-001',
         name: 'Main Warehouse',
         location: 'New York, NY',
         capacity: 50000,
-        manager: 'John Smith',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning()
       .then((r) => r[0])
@@ -129,11 +43,14 @@ export async function POST(request: Request) {
     const warehouse2 = await db
       .insert(warehouse)
       .values({
-        userId: testUserId,
+        id: 'wh-' + Date.now() + '-2',
+        code: 'WH-002',
         name: 'Secondary Warehouse',
         location: 'Los Angeles, CA',
         capacity: 30000,
-        manager: 'Jane Doe',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning()
       .then((r) => r[0])
@@ -142,7 +59,8 @@ export async function POST(request: Request) {
     const supplier1 = await db
       .insert(supplier)
       .values({
-        userId: testUserId,
+        id: 'sup-' + Date.now() + '-1',
+        code: 'SUP-001',
         name: 'TechSupplies Inc.',
         email: 'sales@techsupplies.com',
         phone: '+1-555-0101',
@@ -150,9 +68,10 @@ export async function POST(request: Request) {
         city: 'Chicago',
         state: 'IL',
         country: 'USA',
-        zipCode: '60601',
-        paymentTerms: 'Net 30',
-        rating: 4.5,
+        postalCode: '60601',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning()
       .then((r) => r[0])
@@ -160,7 +79,8 @@ export async function POST(request: Request) {
     const supplier2 = await db
       .insert(supplier)
       .values({
-        userId: testUserId,
+        id: 'sup-' + Date.now() + '-2',
+        code: 'SUP-002',
         name: 'Global Electronics Ltd.',
         email: 'contact@globalelectronics.com',
         phone: '+44-20-7123-4567',
@@ -168,17 +88,19 @@ export async function POST(request: Request) {
         city: 'London',
         state: 'UK',
         country: 'United Kingdom',
-        zipCode: 'EC1A 1BB',
-        paymentTerms: 'Net 45',
-        rating: 4.8,
+        postalCode: 'EC1A 1BB',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning()
       .then((r) => r[0])
 
     // 7. Create products
-    const products = [
+    const productValues = [
       {
-        userId: testUserId,
+        id: 'prod-' + Date.now() + '-1',
+        code: 'PROD-001',
         sku: 'PROD-001',
         name: 'Wireless Mouse',
         description: 'Ergonomic wireless mouse with 2.4GHz connectivity',
@@ -187,9 +109,14 @@ export async function POST(request: Request) {
         costPrice: '12.50',
         sellingPrice: '24.99',
         reorderLevel: 50,
+        reorderQuantity: 100,
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
-        userId: testUserId,
+        id: 'prod-' + Date.now() + '-2',
+        code: 'PROD-002',
         sku: 'PROD-002',
         name: 'USB-C Cable',
         description: 'Premium USB-C to USB-C cable, 2 meters',
@@ -198,9 +125,14 @@ export async function POST(request: Request) {
         costPrice: '3.75',
         sellingPrice: '9.99',
         reorderLevel: 100,
+        reorderQuantity: 200,
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
-        userId: testUserId,
+        id: 'prod-' + Date.now() + '-3',
+        code: 'PROD-003',
         sku: 'PROD-003',
         name: 'Mechanical Keyboard',
         description: 'RGB Mechanical Gaming Keyboard with Cherry MX switches',
@@ -209,9 +141,14 @@ export async function POST(request: Request) {
         costPrice: '45.00',
         sellingPrice: '99.99',
         reorderLevel: 20,
+        reorderQuantity: 50,
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
-        userId: testUserId,
+        id: 'prod-' + Date.now() + '-4',
+        code: 'PROD-004',
         sku: 'PROD-004',
         name: 'Monitor Stand',
         description: 'Adjustable monitor stand with storage',
@@ -220,9 +157,14 @@ export async function POST(request: Request) {
         costPrice: '18.00',
         sellingPrice: '39.99',
         reorderLevel: 15,
+        reorderQuantity: 30,
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
-        userId: testUserId,
+        id: 'prod-' + Date.now() + '-5',
+        code: 'PROD-005',
         sku: 'PROD-005',
         name: 'Laptop Stand',
         description: 'Aluminum laptop cooling stand',
@@ -231,48 +173,55 @@ export async function POST(request: Request) {
         costPrice: '15.00',
         sellingPrice: '34.99',
         reorderLevel: 25,
+        reorderQuantity: 50,
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]
 
-    const createdProducts = await Promise.all(
-      products.map(async (prod) => {
-        const result = await db.insert(product).values(prod).returning().then((r) => r[0])
-        return result
-      })
-    )
+    const createdProducts = await db.insert(product).values(productValues as any).returning()
 
     // 8. Create inventory records
+    const inventoryValues = []
+    let idx = 0
     for (const prod of createdProducts) {
-      await db.insert(inventory).values({
-        userId: testUserId,
+      idx++
+      inventoryValues.push({
+        id: 'inv-' + Date.now() + '-' + idx,
         productId: prod.id,
         warehouseId: warehouse1.id,
         quantity: Math.floor(Math.random() * 200) + 50,
         reservedQuantity: 0,
         availableQuantity: Math.floor(Math.random() * 200) + 50,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
 
-      await db.insert(inventory).values({
-        userId: testUserId,
+      idx++
+      inventoryValues.push({
+        id: 'inv-' + Date.now() + '-' + idx,
         productId: prod.id,
         warehouseId: warehouse2.id,
         quantity: Math.floor(Math.random() * 150) + 30,
         reservedQuantity: 0,
         availableQuantity: Math.floor(Math.random() * 150) + 30,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
     }
 
+    const createdInventories = await db.insert(inventory).values(inventoryValues as any).returning()
+
     return Response.json({
       success: true,
+      message: 'Database seeded successfully',
       data: {
         userId: testUserId,
-        testEmail: 'admin@erp.local',
-        rolesCreated: 3,
-        permissionsCreated: permissions.length,
         warehousesCreated: 2,
         suppliersCreated: 2,
         productsCreated: createdProducts.length,
-        inventoryRecordsCreated: createdProducts.length * 2,
+        inventoryRecordsCreated: createdInventories.length,
       },
     })
   } catch (error) {

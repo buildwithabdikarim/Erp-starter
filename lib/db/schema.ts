@@ -129,7 +129,7 @@ export const supplier = pgTable(
   'supplier',
   {
     id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
-    userId: text('userId').notNull(), // Who created/owns this
+    code: varchar('code', { length: 50 }).notNull().unique(),
     name: varchar('name', { length: 255 }).notNull(),
     email: varchar('email', { length: 255 }),
     phone: varchar('phone', { length: 20 }),
@@ -137,16 +137,12 @@ export const supplier = pgTable(
     city: varchar('city', { length: 100 }),
     state: varchar('state', { length: 100 }),
     country: varchar('country', { length: 100 }),
-    zipCode: varchar('zipCode', { length: 20 }),
-    paymentTerms: varchar('paymentTerms', { length: 100 }),
-    rating: numeric('rating', { precision: 3, scale: 2 }), // 0-5 stars
-    notes: text('notes'),
-    isActive: boolean('isActive').notNull().default(true),
-    deletedAt: timestamp('deletedAt'), // Soft delete
+    postalCode: varchar('postalCode', { length: 20 }),
+    status: varchar('status', { length: 20 }).notNull().default('active'),
+    deletedAt: timestamp('deletedAt'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
-  },
-  (table) => [index('supplier_userId_idx').on(table.userId)]
+  }
 )
 
 // Products/Items
@@ -154,21 +150,21 @@ export const product = pgTable(
   'product',
   {
     id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
-    userId: text('userId').notNull(),
+    code: varchar('code', { length: 50 }).notNull().unique(),
     sku: varchar('sku', { length: 100 }).notNull().unique(),
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
     category: varchar('category', { length: 100 }),
-    unit: varchar('unit', { length: 50 }).notNull(), // 'pcs', 'kg', 'liter', etc.
+    unit: varchar('unit', { length: 50 }).notNull().default('piece'),
     costPrice: numeric('costPrice', { precision: 12, scale: 2 }),
     sellingPrice: numeric('sellingPrice', { precision: 12, scale: 2 }),
     reorderLevel: integer('reorderLevel').notNull().default(10),
-    isActive: boolean('isActive').notNull().default(true),
-    deletedAt: timestamp('deletedAt'), // Soft delete
+    reorderQuantity: integer('reorderQuantity').default(50),
+    status: varchar('status', { length: 20 }).notNull().default('active'),
+    deletedAt: timestamp('deletedAt'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
-  },
-  (table) => [index('product_userId_idx').on(table.userId)]
+  }
 )
 
 // Warehouses
@@ -176,16 +172,15 @@ export const warehouse = pgTable(
   'warehouse',
   {
     id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
-    userId: text('userId').notNull(),
+    code: varchar('code', { length: 50 }).notNull().unique(),
     name: varchar('name', { length: 255 }).notNull(),
     location: text('location'),
-    capacity: integer('capacity'), // In some unit
-    manager: varchar('manager', { length: 255 }),
-    isActive: boolean('isActive').notNull().default(true),
+    capacity: integer('capacity'),
+    status: varchar('status', { length: 20 }).notNull().default('active'),
+    deletedAt: timestamp('deletedAt'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
-  },
-  (table) => [index('warehouse_userId_idx').on(table.userId)]
+  }
 )
 
 // Inventory/Stock
@@ -193,26 +188,20 @@ export const inventory = pgTable(
   'inventory',
   {
     id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
-    userId: text('userId').notNull(),
-    productId: text('productId')
-      .notNull()
-      .references(() => product.id),
-    warehouseId: text('warehouseId')
-      .notNull()
-      .references(() => warehouse.id),
-    quantity: numeric('quantity', { precision: 15, scale: 4 }).notNull().default(0),
-    reservedQuantity: numeric('reservedQuantity', {
-      precision: 15,
-      scale: 4,
-    }).default(0),
-    lastCountedAt: timestamp('lastCountedAt'),
+    productId: text('productId').notNull(),
+    warehouseId: text('warehouseId').notNull(),
+    quantity: integer('quantity').notNull().default(0),
+    reservedQuantity: integer('reservedQuantity').notNull().default(0),
+    availableQuantity: integer('availableQuantity').notNull().default(0),
+    lastCountDate: timestamp('lastCountDate'),
+    lastMovementDate: timestamp('lastMovementDate'),
+    deletedAt: timestamp('deletedAt'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
   },
   (table) => [
-    index('inventory_userId_idx').on(table.userId),
-    index('inventory_productId_idx').on(table.productId),
-    index('inventory_warehouseId_idx').on(table.warehouseId),
+    index('idx_inventory_productId').on(table.productId),
+    index('idx_inventory_warehouseId').on(table.warehouseId),
   ]
 )
 
@@ -221,23 +210,20 @@ export const stockMovement = pgTable(
   'stockMovement',
   {
     id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
-    userId: text('userId').notNull(),
-    productId: text('productId')
-      .notNull()
-      .references(() => product.id),
-    warehouseId: text('warehouseId')
-      .notNull()
-      .references(() => warehouse.id),
-    type: varchar('type', { length: 50 }).notNull(), // 'IN', 'OUT', 'ADJUSTMENT', 'TRANSFER'
-    quantity: numeric('quantity', { precision: 15, scale: 4 }).notNull(),
-    reference: varchar('reference', { length: 100 }), // PO#, SO#, etc.
+    productId: text('productId').notNull(),
+    warehouseId: text('warehouseId').notNull(),
+    movementType: varchar('movementType', { length: 50 }).notNull(),
+    quantity: integer('quantity').notNull(),
+    referenceType: varchar('referenceType', { length: 50 }),
+    referenceId: text('referenceId'),
     notes: text('notes'),
+    createdBy: text('createdBy').notNull(),
+    deletedAt: timestamp('deletedAt'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
   },
   (table) => [
-    index('stockMovement_userId_idx').on(table.userId),
-    index('stockMovement_productId_idx').on(table.productId),
-    index('stockMovement_type_idx').on(table.type),
+    index('idx_stockMovement_productId').on(table.productId),
+    index('idx_stockMovement_warehouseId').on(table.warehouseId),
   ]
 )
 
@@ -246,23 +232,25 @@ export const purchaseOrder = pgTable(
   'purchaseOrder',
   {
     id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
-    userId: text('userId').notNull(),
-    poNumber: varchar('poNumber', { length: 100 }).notNull().unique(),
-    supplierId: text('supplierId')
-      .notNull()
-      .references(() => supplier.id),
+    code: varchar('code', { length: 50 }).notNull().unique(),
+    supplierId: text('supplierId').notNull(),
+    warehouseId: text('warehouseId').notNull(),
     orderDate: timestamp('orderDate').notNull().defaultNow(),
     expectedDeliveryDate: timestamp('expectedDeliveryDate'),
-    status: varchar('status', { length: 50 }).notNull().default('draft'), // draft, submitted, confirmed, received, cancelled
-    totalAmount: numeric('totalAmount', { precision: 15, scale: 2 }).default(0),
+    actualDeliveryDate: timestamp('actualDeliveryDate'),
+    subtotal: numeric('subtotal', { precision: 15, scale: 2 }).notNull(),
+    tax: numeric('tax', { precision: 15, scale: 2 }).default(0),
+    totalAmount: numeric('totalAmount', { precision: 15, scale: 2 }).notNull(),
+    status: varchar('status', { length: 50 }).notNull().default('draft'),
     notes: text('notes'),
-    deletedAt: timestamp('deletedAt'), // Soft delete
+    createdBy: text('createdBy').notNull(),
+    deletedAt: timestamp('deletedAt'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
   },
   (table) => [
-    index('purchaseOrder_userId_idx').on(table.userId),
-    index('purchaseOrder_supplierId_idx').on(table.supplierId),
+    index('idx_purchaseOrder_supplierId').on(table.supplierId),
+    index('idx_purchaseOrder_status').on(table.status),
   ]
 )
 
@@ -271,26 +259,18 @@ export const purchaseOrderLineItem = pgTable(
   'purchaseOrderLineItem',
   {
     id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
-    userId: text('userId').notNull(),
-    purchaseOrderId: text('purchaseOrderId')
-      .notNull()
-      .references(() => purchaseOrder.id, { onDelete: 'cascade' }),
-    productId: text('productId')
-      .notNull()
-      .references(() => product.id),
-    quantity: numeric('quantity', { precision: 15, scale: 4 }).notNull(),
-    unitPrice: numeric('unitPrice', { precision: 12, scale: 2 }).notNull(),
+    purchaseOrderId: text('purchaseOrderId').notNull(),
+    productId: text('productId').notNull(),
+    quantity: integer('quantity').notNull(),
+    unitPrice: numeric('unitPrice', { precision: 15, scale: 2 }).notNull(),
     lineTotal: numeric('lineTotal', { precision: 15, scale: 2 }).notNull(),
-    receivedQuantity: numeric('receivedQuantity', {
-      precision: 15,
-      scale: 4,
-    }).default(0),
+    receivedQuantity: integer('receivedQuantity').default(0),
+    deletedAt: timestamp('deletedAt'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
   },
   (table) => [
-    index('poLineItem_userId_idx').on(table.userId),
-    index('poLineItem_poId_idx').on(table.purchaseOrderId),
+    index('idx_purchaseOrderItem_purchaseOrderId').on(table.purchaseOrderId),
   ]
 )
 
@@ -299,20 +279,27 @@ export const salesOrder = pgTable(
   'salesOrder',
   {
     id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
-    userId: text('userId').notNull(),
-    soNumber: varchar('soNumber', { length: 100 }).notNull().unique(),
+    code: varchar('code', { length: 50 }).notNull().unique(),
     customerName: varchar('customerName', { length: 255 }).notNull(),
     customerEmail: varchar('customerEmail', { length: 255 }),
+    customerPhone: varchar('customerPhone', { length: 20 }),
     orderDate: timestamp('orderDate').notNull().defaultNow(),
+    shipDate: timestamp('shipDate'),
     deliveryDate: timestamp('deliveryDate'),
-    status: varchar('status', { length: 50 }).notNull().default('draft'), // draft, confirmed, shipped, delivered, cancelled
-    totalAmount: numeric('totalAmount', { precision: 15, scale: 2 }).default(0),
+    subtotal: numeric('subtotal', { precision: 15, scale: 2 }).notNull(),
+    tax: numeric('tax', { precision: 15, scale: 2 }).default(0),
+    totalAmount: numeric('totalAmount', { precision: 15, scale: 2 }).notNull(),
+    status: varchar('status', { length: 50 }).notNull().default('draft'),
+    paymentStatus: varchar('paymentStatus', { length: 50 }).notNull().default('unpaid'),
     notes: text('notes'),
-    deletedAt: timestamp('deletedAt'), // Soft delete
+    createdBy: text('createdBy').notNull(),
+    deletedAt: timestamp('deletedAt'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
   },
-  (table) => [index('salesOrder_userId_idx').on(table.userId)]
+  (table) => [
+    index('idx_salesOrder_status').on(table.status),
+  ]
 )
 
 // Sales Order Line Items
@@ -320,25 +307,17 @@ export const salesOrderLineItem = pgTable(
   'salesOrderLineItem',
   {
     id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
-    userId: text('userId').notNull(),
-    salesOrderId: text('salesOrderId')
-      .notNull()
-      .references(() => salesOrder.id, { onDelete: 'cascade' }),
-    productId: text('productId')
-      .notNull()
-      .references(() => product.id),
-    quantity: numeric('quantity', { precision: 15, scale: 4 }).notNull(),
-    unitPrice: numeric('unitPrice', { precision: 12, scale: 2 }).notNull(),
+    salesOrderId: text('salesOrderId').notNull(),
+    productId: text('productId').notNull(),
+    quantity: integer('quantity').notNull(),
+    unitPrice: numeric('unitPrice', { precision: 15, scale: 2 }).notNull(),
     lineTotal: numeric('lineTotal', { precision: 15, scale: 2 }).notNull(),
-    shippedQuantity: numeric('shippedQuantity', {
-      precision: 15,
-      scale: 4,
-    }).default(0),
+    shippedQuantity: integer('shippedQuantity').default(0),
+    deletedAt: timestamp('deletedAt'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
   },
   (table) => [
-    index('soLineItem_userId_idx').on(table.userId),
-    index('soLineItem_soId_idx').on(table.salesOrderId),
+    index('idx_salesOrderItem_salesOrderId').on(table.salesOrderId),
   ]
 )

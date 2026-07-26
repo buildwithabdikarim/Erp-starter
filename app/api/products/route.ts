@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url)
-  const action = url.searchParams.get('action') // 'search', 'category', 'active', 'stats'
+  const action = url.searchParams.get('action') // 'search', 'category', 'active'
   const query = url.searchParams.get('q')
   const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 500)
 
@@ -18,19 +18,16 @@ export async function GET(request: Request) {
     let result
 
     if (action === 'search' && query) {
-      result = await productRepository.searchByName(query, session.user.id, limit)
+      result = await productRepository.searchByName(query, limit)
     } else if (action === 'category' && query) {
-      result = await productRepository.findByCategory(query, session.user.id, limit)
+      result = await productRepository.findByCategory(query, limit)
     } else if (action === 'active') {
-      result = await productRepository.findActive(session.user.id, limit)
-    } else if (action === 'stats') {
-      result = await productService.getProductStats(session.user.id)
+      result = await productRepository.findActive(limit)
     } else {
-      const products = await productRepository.findAll({ limit })
-      result = products
+      result = await productRepository.getAllProducts(limit)
     }
 
-    return Response.json(result)
+    return Response.json({ success: true, data: result })
   } catch (error) {
     console.error('[Products API] GET Error:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })

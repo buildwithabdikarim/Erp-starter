@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { ClientProvider } from '@/components/ClientProvider'
 
 export const metadata: Metadata = {
   title: 'ERP System - Configuration-Driven Enterprise Management',
@@ -41,7 +42,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="bg-background">
       <body className="antialiased">
-        {children}
+        <ClientProvider>
+          {children}
+        </ClientProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

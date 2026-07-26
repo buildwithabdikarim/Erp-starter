@@ -26,7 +26,8 @@ export function useProducts(options?: { limit?: number; action?: string; q?: str
 
       const response = await fetch(`/api/products?${params.toString()}`)
       if (!response.ok) throw new Error('Failed to fetch products')
-      return response.json()
+      const result = await response.json()
+      return result.data || result
     },
   })
 }

@@ -7,7 +7,6 @@ export class ProductService {
     try {
       const product = await productRepository.create({
         ...data,
-        userId,
       })
 
       await logAudit({
