@@ -115,6 +115,8 @@ export const ROUTES = {
   products: '/products',
   suppliers: '/suppliers',
   sales: '/sales',
+  signIn: '/sign-in',
+  signUp: '/sign-up',
 } as const
 
 // ============================================================================

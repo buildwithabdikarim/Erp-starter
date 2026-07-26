@@ -1,13 +1,10 @@
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
+import { requireApiAuth, getRequestMeta } from '@/lib/auth-utils'
 import { productRepository } from '@/lib/repositories/ProductRepository'
 import { productService } from '@/lib/services/ProductService'
 
 export async function GET(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authResult = await requireApiAuth()
+  if (authResult.error) return authResult.error
 
   const url = new URL(request.url)
   const action = url.searchParams.get('action') // 'search', 'category', 'active'
@@ -35,19 +32,19 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authResult = await requireApiAuth()
+  if (authResult.error) return authResult.error
 
-  const headersList = await headers()
-  const ipAddress = headersList.get('x-forwarded-for') || headersList.get('x-real-ip') || 'unknown'
-  const userAgent = headersList.get('user-agent') || 'unknown'
+  const { ipAddress, userAgent } = await getRequestMeta()
 
   try {
     const data = await request.json()
-
-    const result = await productService.createProduct(session.user.id, data, ipAddress, userAgent)
+    const result = await productService.createProduct(
+      authResult.session.user.id,
+      data,
+      ipAddress,
+      userAgent
+    )
 
     return Response.json(result)
   } catch (error) {

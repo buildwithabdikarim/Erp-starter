@@ -1,12 +1,9 @@
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
+import { requireApiAuth } from '@/lib/auth-utils'
 import { auditRepository } from '@/lib/repositories/AuditRepository'
 
 export async function GET(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authResult = await requireApiAuth()
+  if (authResult.error) return authResult.error
 
   const url = new URL(request.url)
   const type = url.searchParams.get('type') // 'user', 'module', 'action', 'stats'
@@ -17,7 +14,7 @@ export async function GET(request: Request) {
     let result
 
     if (type === 'user') {
-      result = await auditRepository.findByUser(filter || session.user.id, limit)
+      result = await auditRepository.findByUser(filter || authResult.session.user.id, limit)
     } else if (type === 'module') {
       result = await auditRepository.findByModule(filter || '', limit)
     } else if (type === 'action') {
@@ -25,9 +22,9 @@ export async function GET(request: Request) {
     } else if (type === 'failures') {
       result = await auditRepository.findFailures(limit)
     } else if (type === 'stats') {
-      result = await auditRepository.getStats(session.user.id)
+      result = await auditRepository.getStats(authResult.session.user.id)
     } else {
-      result = await auditRepository.findByUser(session.user.id, limit)
+      result = await auditRepository.findByUser(authResult.session.user.id, limit)
     }
 
     return Response.json(result)

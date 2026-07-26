@@ -1,13 +1,13 @@
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
+import { requireApiAuth, getRequestMeta } from '@/lib/auth-utils'
 import { productRepository } from '@/lib/repositories/ProductRepository'
 import { productService } from '@/lib/services/ProductService'
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const authResult = await requireApiAuth()
+  if (authResult.error) return authResult.error
 
   try {
     const { id } = await params
@@ -24,21 +24,26 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const authResult = await requireApiAuth()
+  if (authResult.error) return authResult.error
 
-  const headersList = await headers()
-  const ipAddress = headersList.get('x-forwarded-for') || headersList.get('x-real-ip') || 'unknown'
-  const userAgent = headersList.get('user-agent') || 'unknown'
+  const { ipAddress, userAgent } = await getRequestMeta()
 
   try {
     const { id } = await params
     const data = await request.json()
 
-    const result = await productService.updateProduct(session.user.id, id, data, ipAddress, userAgent)
+    const result = await productService.updateProduct(
+      authResult.session.user.id,
+      id,
+      data,
+      ipAddress,
+      userAgent
+    )
 
     return Response.json(result)
   } catch (error) {
@@ -50,22 +55,27 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const authResult = await requireApiAuth()
+  if (authResult.error) return authResult.error
 
-  const headersList = await headers()
-  const ipAddress = headersList.get('x-forwarded-for') || headersList.get('x-real-ip') || 'unknown'
-  const userAgent = headersList.get('user-agent') || 'unknown'
+  const { ipAddress, userAgent } = await getRequestMeta()
 
   try {
     const { id } = await params
     const url = new URL(request.url)
     const permanent = url.searchParams.get('permanent') === 'true'
 
-    const result = await productService.deleteProduct(session.user.id, id, permanent, ipAddress, userAgent)
+    const result = await productService.deleteProduct(
+      authResult.session.user.id,
+      id,
+      permanent,
+      ipAddress,
+      userAgent
+    )
 
     return Response.json(result)
   } catch (error) {
