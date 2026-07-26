@@ -7,17 +7,19 @@ import { Table } from '@/components/Table'
 import { Modal } from '@/components/Modal'
 import { Form } from '@/components/Form'
 import { Button } from '@/components/Button'
+import { Can } from '@/components/Can'
 import { useModal, useNotification } from '@/hooks'
 import { saleAPI, productAPI, supplierAPI } from '@/services/api'
 import { getSalesFormFields } from '@/features/sales/fields'
 import { salesColumns } from '@/features/sales/columns'
 import { Sale, Product, Supplier, FormConfig, TableConfig } from '@/types'
+import { canAccess, type UserAccess } from '@/lib/permissions'
 import { Plus, Edit2, Trash2, Printer } from 'lucide-react'
 import { BulkPrintDialog } from '@/components/BulkPrintDialog'
 import { PrintTransaction } from '@/components/PrintTransaction'
 import { PrintTransactionGroup } from '@/components/PrintTransactionGroup'
 
-export function SalesClient() {
+export function SalesClient({ access }: { access: UserAccess }) {
   const [sales, setSales] = useState<(Sale & { product_name: string; supplier_name: string })[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -31,6 +33,8 @@ export function SalesClient() {
     sales: (Sale & { product_name: string; supplier_name: string })[]
     groupBy: 'date' | 'supplier' | 'manual'
   } | null>(null)
+  const canUpdate = canAccess(access, 'orders', 'update')
+  const canDelete = canAccess(access, 'orders', 'delete')
 
   useEffect(() => {
     loadData()
@@ -121,20 +125,28 @@ export function SalesClient() {
         id: 'actions',
         header: 'Actions',
         width: 150,
-        cell: (_, row) => (
+        cell: (_: unknown, row: any) => (
           <div className="flex gap-2">
             <Button size="sm" variant="secondary" onClick={() => handlePrintSingle(row)}>
               <Printer className="w-4 h-4" />
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => {
-              setSelectedSale(row)
-              modal.open('edit', row)
-            }}>
-              <Edit2 className="w-4 h-4" />
-            </Button>
-            <Button size="sm" variant="destructive" onClick={() => handleDelete(row)}>
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            <Can access={access} module="orders" action="update">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setSelectedSale(row)
+                  modal.open('edit', row)
+                }}
+              >
+                <Edit2 className="w-4 h-4" />
+              </Button>
+            </Can>
+            <Can access={access} module="orders" action="delete">
+              <Button size="sm" variant="destructive" onClick={() => handleDelete(row)}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </Can>
           </div>
         ),
       },
@@ -171,13 +183,17 @@ export function SalesClient() {
               <Printer className="w-4 h-4 mr-2" />
               Bulk Print
             </Button>
-            <Button onClick={() => {
-              setSelectedSale(undefined)
-              modal.open('create')
-            }}>
-              <Plus className="w-4 h-4 mr-2" />
-              Record Sale
-            </Button>
+            <Can access={access} module="orders" action="create">
+              <Button
+                onClick={() => {
+                  setSelectedSale(undefined)
+                  modal.open('create')
+                }}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Record Sale
+              </Button>
+            </Can>
           </div>
         </div>
 

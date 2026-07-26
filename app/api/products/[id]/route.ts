@@ -1,4 +1,4 @@
-import { requireApiAuth, getRequestMeta } from '@/lib/auth-utils'
+import { requireApiPermission, getRequestMeta } from '@/lib/auth-utils'
 import { productRepository } from '@/lib/repositories/ProductRepository'
 import { productService } from '@/lib/services/ProductService'
 
@@ -6,7 +6,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireApiAuth()
+  const authResult = await requireApiPermission('products', 'read')
   if (authResult.error) return authResult.error
 
   try {
@@ -28,7 +28,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireApiAuth()
+  const authResult = await requireApiPermission('products', 'update')
   if (authResult.error) return authResult.error
 
   const { ipAddress, userAgent } = await getRequestMeta()
@@ -59,7 +59,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireApiAuth()
+  const authResult = await requireApiPermission('products', 'delete')
   if (authResult.error) return authResult.error
 
   const { ipAddress, userAgent } = await getRequestMeta()

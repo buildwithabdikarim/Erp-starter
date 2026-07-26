@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { auth } from './auth'
+import { hasPermission, type PermissionAction, type PermissionModule } from './permissions-server'
 
 export type AppSession = NonNullable<Awaited<ReturnType<typeof getSession>>>
 
@@ -39,6 +40,33 @@ export async function requireApiAuth(): Promise<
     }
   }
   return { session }
+}
+
+/**
+ * Authentication + authorization for route handlers.
+ * Returns 401 if unauthenticated, 403 if missing module/action permission.
+ */
+export async function requireApiPermission(
+  module: PermissionModule | string,
+  action: PermissionAction | string
+): Promise<{ session: AppSession; error?: never } | { session?: never; error: Response }> {
+  const authResult = await requireApiAuth()
+  if (authResult.error) return authResult
+
+  const allowed = await hasPermission(authResult.session.user.id, module, action)
+  if (!allowed) {
+    return {
+      error: Response.json(
+        {
+          error: 'Forbidden',
+          message: `Missing permission: ${module}:${action}`,
+        },
+        { status: 403 }
+      ),
+    }
+  }
+
+  return { session: authResult.session }
 }
 
 export async function getRequestMeta() {

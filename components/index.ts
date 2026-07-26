@@ -1,4 +1,3 @@
-// Layout
 export { Layout } from './Layout'
 
 // Card
@@ -19,3 +18,6 @@ export { Button } from './Button'
 
 // Alert
 export { Alert, Toast } from './Alert'
+
+// Authorization
+export { Can } from './Can'

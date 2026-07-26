@@ -1,9 +1,9 @@
-import { requireApiAuth, getRequestMeta } from '@/lib/auth-utils'
+import { requireApiPermission, getRequestMeta } from '@/lib/auth-utils'
 import { productRepository } from '@/lib/repositories/ProductRepository'
 import { productService } from '@/lib/services/ProductService'
 
 export async function GET(request: Request) {
-  const authResult = await requireApiAuth()
+  const authResult = await requireApiPermission('products', 'read')
   if (authResult.error) return authResult.error
 
   const url = new URL(request.url)
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authResult = await requireApiAuth()
+  const authResult = await requireApiPermission('products', 'create')
   if (authResult.error) return authResult.error
 
   const { ipAddress, userAgent } = await getRequestMeta()

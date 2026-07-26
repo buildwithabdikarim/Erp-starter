@@ -1,8 +1,8 @@
-import { requireApiAuth } from '@/lib/auth-utils'
+import { requireApiPermission } from '@/lib/auth-utils'
 import { auditRepository } from '@/lib/repositories/AuditRepository'
 
 export async function GET(request: Request) {
-  const authResult = await requireApiAuth()
+  const authResult = await requireApiPermission('audit', 'read')
   if (authResult.error) return authResult.error
 
   const url = new URL(request.url)

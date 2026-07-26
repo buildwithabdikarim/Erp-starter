@@ -7,19 +7,24 @@ import { Table } from '@/components/Table'
 import { Modal } from '@/components/Modal'
 import { Form } from '@/components/Form'
 import { Button } from '@/components/Button'
+import { Can } from '@/components/Can'
 import { useModal, useNotification } from '@/hooks'
 import { supplierAPI } from '@/services/api'
 import { supplierFormFields } from '@/features/suppliers/fields'
 import { supplierColumns } from '@/features/suppliers/columns'
 import { Supplier, FormConfig, TableConfig } from '@/types'
+import { canAccess, type UserAccess } from '@/lib/permissions'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 
-export function SuppliersClient() {
+export function SuppliersClient({ access }: { access: UserAccess }) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const modal = useModal()
   const { notifications, add } = useNotification()
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | undefined>()
+  const canUpdate = canAccess(access, 'suppliers', 'update')
+  const canDelete = canAccess(access, 'suppliers', 'delete')
+  const showActions = canUpdate || canDelete
 
   useEffect(() => {
     loadData()
@@ -81,24 +86,36 @@ export function SuppliersClient() {
   const tableConfig: TableConfig = {
     columns: [
       ...supplierColumns,
-      {
-        id: 'actions',
-        header: 'Actions',
-        width: 120,
-        cell: (_, row) => (
-          <div className="flex gap-2">
-            <Button size="sm" variant="secondary" onClick={() => {
-              setSelectedSupplier(row)
-              modal.open('edit', row)
-            }}>
-              <Edit2 className="w-4 h-4" />
-            </Button>
-            <Button size="sm" variant="destructive" onClick={() => handleDelete(row)}>
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
-        ),
-      },
+      ...(showActions
+        ? [
+            {
+              id: 'actions',
+              header: 'Actions',
+              width: 120,
+              cell: (_: unknown, row: any) => (
+                <div className="flex gap-2">
+                  <Can access={access} module="suppliers" action="update">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setSelectedSupplier(row)
+                        modal.open('edit', row)
+                      }}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                  </Can>
+                  <Can access={access} module="suppliers" action="delete">
+                    <Button size="sm" variant="destructive" onClick={() => handleDelete(row)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </Can>
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
     data: suppliers,
     enableSorting: true,
@@ -127,13 +144,17 @@ export function SuppliersClient() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Suppliers</h1>
-          <Button onClick={() => {
-            setSelectedSupplier(undefined)
-            modal.open('create')
-          }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Supplier
-          </Button>
+          <Can access={access} module="suppliers" action="create">
+            <Button
+              onClick={() => {
+                setSelectedSupplier(undefined)
+                modal.open('create')
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Supplier
+            </Button>
+          </Can>
         </div>
 
         <Card>

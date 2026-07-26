@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
-import { user, role, permission, rolePermission, userRole, supplier, product, warehouse, inventory } from '@/lib/db/schema'
+import { user, supplier, product, warehouse, inventory } from '@/lib/db/schema'
+import { ensureRbacBootstrap } from '@/lib/rbac-bootstrap'
 
 export async function POST(request: Request) {
   // Security check - only allow in development
@@ -22,7 +23,9 @@ export async function POST(request: Request) {
       testUserId = existingUser[0].id
     }
 
-    console.log('Skipping RBAC setup - roles and permissions already exist')
+    console.log('Bootstrapping RBAC roles/permissions...')
+    const rbac = await ensureRbacBootstrap(testUserId)
+    console.log(`RBAC ready — Admin assigned, ${rbac.permissionCount} permissions`)
 
     // 5. Create warehouses
     const warehouse1 = await db
@@ -39,6 +42,7 @@ export async function POST(request: Request) {
       })
       .returning()
       .then((r) => r[0])
+
 
     const warehouse2 = await db
       .insert(warehouse)
