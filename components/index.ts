@@ -1,3 +1,7 @@
+// Canonical UI stack for the ERP app.
+// Prefer these imports. `@/components/ui/*` only re-exports the same stack.
+
+// Layout
 export { Layout } from './Layout'
 
 // Card
